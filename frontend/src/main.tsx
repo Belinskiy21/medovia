@@ -68,7 +68,13 @@ function storedSession(): Session | null {
   if (!value) return null;
 
   try {
-    return JSON.parse(value) as Session;
+    const session = JSON.parse(value) as Session;
+    if (!Array.isArray(session.user?.memberships)) {
+      window.localStorage.removeItem(sessionStorageKey);
+      return null;
+    }
+
+    return session;
   } catch {
     window.localStorage.removeItem(sessionStorageKey);
     return null;
