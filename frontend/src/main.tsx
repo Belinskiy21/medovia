@@ -125,6 +125,7 @@ function App() {
   const role = currentMembership?.role ?? "nurse";
   const canManageMedications = role === "pharmacist" || role === "admin";
   const canDeleteMedications = role === "admin";
+  const canAdvanceOrders = role === "pharmacist" || role === "admin";
 
   const headers = useMemo(
     () => ({
@@ -807,7 +808,7 @@ function App() {
                   <button className="secondary" onClick={() => setSelectedOrderId(selectedOrderId === order.id ? null : order.id)}>
                     <Eye size={16} /> {selectedOrderId === order.id ? "Hide details" : "Details"}
                   </button>
-                  {order.status !== "delivered" && (
+                  {canAdvanceOrders && order.status !== "delivered" && (
                     <button className="secondary" onClick={() => advanceOrder(order.id)}>
                       <Send size={16} /> Advance
                     </button>
