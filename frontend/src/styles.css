@@ -130,6 +130,10 @@ select {
   padding: 12px 14px;
 }
 
+.warning-band {
+  justify-content: space-between;
+}
+
 .error,
 .warning-band {
   background: #fff1e7;
@@ -139,7 +143,8 @@ select {
 
 .summary-grid,
 .workspace,
-.orders-grid {
+.orders-grid,
+.view-tabs {
   display: grid;
   gap: 16px;
 }
@@ -170,6 +175,23 @@ select {
 
 .summary.urgent strong {
   color: #b44900;
+}
+
+.view-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 16px;
+  max-width: 420px;
+}
+
+.tab {
+  background: #e8f0ee;
+  color: #16453e;
+  justify-content: center;
+}
+
+.tab.active {
+  background: #116b5f;
+  color: #ffffff;
 }
 
 .workspace {
@@ -413,14 +435,16 @@ tr.low td:first-child {
   }
 
   .topbar-actions,
-  .filters {
+  .filters,
+  .warning-band {
     flex-wrap: wrap;
   }
 
   .summary-grid,
   .workspace,
   .orders-grid,
-  .status-timeline {
+  .status-timeline,
+  .view-tabs {
     grid-template-columns: 1fr;
   }
 

@@ -82,6 +82,7 @@ function App() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [orderLines, setOrderLines] = useState<Record<number, number>>({});
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [activeView, setActiveView] = useState<"workspace" | "low-stock">("workspace");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -150,6 +151,7 @@ function App() {
     setOrders([]);
     setAuditLogs([]);
     setSelectedOrderId(null);
+    setActiveView("workspace");
   }
 
   async function refresh(nextUnitId = unitId) {
@@ -297,6 +299,30 @@ function App() {
     }
   }
 
+  function exportLowStock() {
+    const rows = [
+      ["Name", "ATC code", "Form", "Strength", "Current balance", "Minimum threshold", "Deficit", "Category"],
+      ...lowStock.map((medication) => [
+        medication.name,
+        medication.atc_code,
+        medication.form,
+        medication.strength,
+        medication.inventory_balance,
+        medication.minimum_threshold,
+        medication.minimum_threshold - medication.inventory_balance,
+        medication.category
+      ])
+    ];
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, "\"\"")}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `meditrack-low-stock-unit-${unitId}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!session) {
     return (
       <main>
@@ -371,9 +397,64 @@ function App() {
       {lowStock.length > 0 && (
         <section className="warning-band">
           <AlertTriangle size={18} />
-          <span>{lowStock.map((item) => `${item.name} (${item.inventory_balance}/${item.minimum_threshold})`).join(", ")}</span>
+          <span>{lowStock.length} medications are below their minimum threshold.</span>
+          <button className="secondary" onClick={() => setActiveView("low-stock")}>
+            Review list
+          </button>
         </section>
       )}
+
+      <section className="view-tabs" aria-label="Primary view">
+        <button className={activeView === "workspace" ? "tab active" : "tab"} onClick={() => setActiveView("workspace")}>
+          Registry and orders
+        </button>
+        <button className={activeView === "low-stock" ? "tab active" : "tab"} onClick={() => setActiveView("low-stock")}>
+          Low stock
+        </button>
+      </section>
+
+      {activeView === "low-stock" ? (
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>Low stock medications</h2>
+            <button className="secondary" onClick={exportLowStock} disabled={lowStock.length === 0}>
+              <Download size={18} /> CSV
+            </button>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>ATC</th>
+                  <th>Form</th>
+                  <th>Strength</th>
+                  <th>Balance</th>
+                  <th>Deficit</th>
+                  <th>Category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lowStock.map((medication) => (
+                  <tr key={medication.id} className="low">
+                    <td>{medication.name}</td>
+                    <td>{medication.atc_code}</td>
+                    <td>{medication.form}</td>
+                    <td>{medication.strength}</td>
+                    <td>
+                      {medication.inventory_balance} / {medication.minimum_threshold}
+                    </td>
+                    <td>{medication.minimum_threshold - medication.inventory_balance}</td>
+                    <td>{medication.category}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {lowStock.length === 0 && <p className="empty-state">No medications are below threshold.</p>}
+          </div>
+        </section>
+      ) : (
+        <>
 
       <div className="workspace">
         <section className="panel medication-panel">
@@ -546,6 +627,8 @@ function App() {
             ))}
           </div>
         </section>
+      )}
+        </>
       )}
     </main>
   );
