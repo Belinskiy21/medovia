@@ -33,7 +33,7 @@ Then open:
 - Frontend: http://localhost:5173
 - Backend health check: http://localhost:3001/up
 
-The backend seeds two healthcare units and sample medication/order data when the container starts.
+The backend seeds two healthcare units, sample medication/order data, and demo users when the container starts.
 
 Useful commands:
 
@@ -76,6 +76,16 @@ The frontend exposes a role selector. The backend reads:
 - `X-User-Email`: actor shown in audit logs and orders
 
 This is intentionally lightweight for the assignment. A production version would use real authentication, signed tokens, and persistent users.
+
+Seeded demo credentials:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Nurse | `nurse@medovia.test` | `NursePass123!` |
+| Pharmacist | `pharmacist@medovia.test` | `PharmacistPass123!` |
+| Admin | `admin@medovia.test` | `AdminPass123!` |
+
+The demo users are persisted with secure password digests and are ready for a future login endpoint. The current UI still uses the role selector and `X-User-*` headers to keep the assignment flow simple.
 
 ## Tests
 
