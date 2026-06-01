@@ -25,7 +25,7 @@ Core entities are `HealthcareUnit`, `Medication`, `Order`, and `OrderLine`. `Ord
 ## Run Locally
 
 ```bash
-docker compose up --build
+make dev-build
 ```
 
 Then open:
@@ -34,6 +34,17 @@ Then open:
 - Backend health check: http://localhost:3001/up
 
 The backend seeds two healthcare units and sample medication/order data when the container starts.
+
+Useful commands:
+
+```bash
+make help
+make dev
+make prod-build
+make test
+make logs
+make stop
+```
 
 ## API Role Headers
 
