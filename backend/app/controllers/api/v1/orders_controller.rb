@@ -18,7 +18,8 @@ module Api
             page:,
             per_page:,
             total_count:,
-            total_pages: (total_count.to_f / per_page).ceil
+            total_pages: (total_count.to_f / per_page).ceil,
+            open_count: orders.where.not(status: "delivered").count
           }
         }
       end

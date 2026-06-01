@@ -76,6 +76,7 @@ class MeditrackFlowTest < ActionDispatch::IntegrationTest
     assert_equal 5, body["data"].length
     assert_equal 6, body["meta"]["total_count"]
     assert_equal 2, body["meta"]["total_pages"]
+    assert_equal 6, body["meta"]["open_count"]
     assert body["data"].all? { |order| order["status"] == "sent" }
     assert body["data"].all? { |order| order["order_lines"].any? { |line| line["medication_name"] == "Furosemide" } }
   end

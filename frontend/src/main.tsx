@@ -42,7 +42,7 @@ type Order = {
   order_lines: OrderLine[];
 };
 type OrderStatus = (typeof orderStatuses)[number];
-type OrderMeta = { page: number; per_page: number; total_count: number; total_pages: number };
+type OrderMeta = { page: number; per_page: number; total_count: number; total_pages: number; open_count: number };
 type OrderResponse = { data: Order[]; meta: OrderMeta };
 type AuditLog = { id: number; actor: string; role: string; action: string; created_at: string; metadata: Record<string, unknown> };
 type SessionUser = { id: number; email: string; name: string; role: Role };
@@ -89,7 +89,7 @@ function App() {
   const [orderFromDate, setOrderFromDate] = useState("");
   const [orderToDate, setOrderToDate] = useState("");
   const [orderPage, setOrderPage] = useState(1);
-  const [orderMeta, setOrderMeta] = useState<OrderMeta>({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0 });
+  const [orderMeta, setOrderMeta] = useState<OrderMeta>({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0, open_count: 0 });
   const [medicationForm, setMedicationForm] = useState<MedicationFormState>(emptyMedication);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [orderLines, setOrderLines] = useState<Record<number, number>>({});
@@ -165,7 +165,7 @@ function App() {
     setSelectedOrderId(null);
     setActiveView("workspace");
     setOrderPage(1);
-    setOrderMeta({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0 });
+    setOrderMeta({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0, open_count: 0 });
   }
 
   function orderQueryString(includePagination = true) {
@@ -427,7 +427,7 @@ function App() {
 
       <section className="summary-grid">
         <Summary label="Medications" value={medications.length} />
-        <Summary label="Open orders" value={orders.filter((order) => order.status !== "delivered").length} />
+        <Summary label="Open orders" value={orderMeta.open_count} />
         <Summary label="Low stock" value={lowStock.length} urgent={lowStock.length > 0} />
       </section>
 
