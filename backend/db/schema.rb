@@ -23,8 +23,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_153000) do
     t.jsonb "metadata", default: {}, null: false
     t.string "role", null: false
     t.datetime "updated_at", null: false
-    t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable_type_and_auditable_id"
-    t.index ["created_at"], name: "index_audit_logs_on_created_at"
+    t.index [ "auditable_type", "auditable_id" ], name: "index_audit_logs_on_auditable_type_and_auditable_id"
+    t.index [ "created_at" ], name: "index_audit_logs_on_created_at"
   end
 
   create_table "healthcare_units", force: :cascade do |t|
@@ -47,8 +47,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_153000) do
     t.string "strength", null: false
     t.datetime "updated_at", null: false
     t.index "healthcare_unit_id, lower((atc_code)::text), lower((form)::text), lower((strength)::text)", name: "index_medications_on_unit_atc_form_strength", unique: true
-    t.index ["healthcare_unit_id", "atc_code", "name"], name: "index_medications_on_unit_atc_name"
-    t.index ["healthcare_unit_id"], name: "index_medications_on_healthcare_unit_id"
+    t.index [ "healthcare_unit_id", "atc_code", "name" ], name: "index_medications_on_unit_atc_name"
+    t.index [ "healthcare_unit_id" ], name: "index_medications_on_healthcare_unit_id"
   end
 
   create_table "memberships", force: :cascade do |t|
@@ -57,9 +57,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_153000) do
     t.string "role", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["healthcare_unit_id"], name: "index_memberships_on_healthcare_unit_id"
-    t.index ["user_id", "healthcare_unit_id"], name: "index_memberships_on_user_id_and_healthcare_unit_id", unique: true
-    t.index ["user_id"], name: "index_memberships_on_user_id"
+    t.index [ "healthcare_unit_id" ], name: "index_memberships_on_healthcare_unit_id"
+    t.index [ "user_id", "healthcare_unit_id" ], name: "index_memberships_on_user_id_and_healthcare_unit_id", unique: true
+    t.index [ "user_id" ], name: "index_memberships_on_user_id"
   end
 
   create_table "order_lines", force: :cascade do |t|
@@ -68,9 +68,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_153000) do
     t.bigint "order_id", null: false
     t.integer "quantity", null: false
     t.datetime "updated_at", null: false
-    t.index ["medication_id"], name: "index_order_lines_on_medication_id"
-    t.index ["order_id", "medication_id"], name: "index_order_lines_on_order_medication", unique: true
-    t.index ["order_id"], name: "index_order_lines_on_order_id"
+    t.index [ "medication_id" ], name: "index_order_lines_on_medication_id"
+    t.index [ "order_id", "medication_id" ], name: "index_order_lines_on_order_medication", unique: true
+    t.index [ "order_id" ], name: "index_order_lines_on_order_id"
   end
 
   create_table "orders", force: :cascade do |t|
@@ -82,7 +82,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_153000) do
     t.datetime "sent_at"
     t.string "status", default: "draft", null: false
     t.datetime "updated_at", null: false
-    t.index ["healthcare_unit_id"], name: "index_orders_on_healthcare_unit_id"
+    t.index [ "healthcare_unit_id" ], name: "index_orders_on_healthcare_unit_id"
   end
 
   create_table "service_accounts", force: :cascade do |t|
@@ -92,8 +92,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_153000) do
     t.string "role", null: false
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
-    t.index ["identifier"], name: "index_service_accounts_on_identifier", unique: true
-    t.index ["role"], name: "index_service_accounts_on_role"
+    t.index [ "identifier" ], name: "index_service_accounts_on_identifier", unique: true
+    t.index [ "role" ], name: "index_service_accounts_on_role"
   end
 
   create_table "users", force: :cascade do |t|
@@ -102,7 +102,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_153000) do
     t.string "name", null: false
     t.string "password_digest", null: false
     t.datetime "updated_at", null: false
-    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index [ "email" ], name: "index_users_on_email", unique: true
   end
 
   add_foreign_key "medications", "healthcare_units"

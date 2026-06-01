@@ -5,11 +5,14 @@
 - Rails API with REST endpoints and `/api/v1` versioning.
 - PostgreSQL as the primary relational database.
 - Order lifecycle: `draft -> sent -> confirmed -> delivered`.
-- Audit logging for traceability.
+- Filterable audit logging for traceability.
 - Bearer authentication for human users and service-to-service callers.
+- Healthcare-unit scoped memberships for human roles.
 - React + TypeScript frontend with responsive clinical dashboard.
 - Search by medication name, ATC code, and pharmaceutical form.
 - Threshold-based stock monitoring.
+- Paginated medication registry, low-stock list, and order history.
+- CSV export for filtered order history and low-stock inventory.
 - Transactional, row-lock based inventory updates after delivery.
 - Production Docker images, Compose runtime, and GitHub Actions deployment.
 

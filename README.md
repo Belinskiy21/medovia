@@ -13,14 +13,15 @@ Core entities are `HealthcareUnit`, `Medication`, `Order`, and `OrderLine`. `Ord
 ## Implemented Features
 
 - Medication registry with name, ATC code, form, strength, inventory balance, minimum threshold, and AI-style category suggestion.
-- Add, edit, delete, search, and filter medications.
-- Orders with one or more medications and quantities.
-- Order history per healthcare unit.
+- Medication search, form filtering, low-stock highlighting, and paginated registry views.
+- Role-scoped medication actions: pharmacists/admins can add and edit, admins can delete.
+- Orders with one or more medications and quantities, plus low-stock highlighting in the order picker.
+- Filterable and paginated order history per healthcare unit.
 - Automatic inventory update on delivery.
-- Low inventory warnings.
-- Role-based API checks using bearer-authenticated users and service accounts.
-- Audit log for critical mutations.
-- CSV export for order history.
+- Low inventory warnings with a dedicated paginated low-stock page and CSV export.
+- Healthcare-unit scoped role-based API checks using bearer-authenticated users and service accounts.
+- Filterable audit log for critical mutations and order transitions.
+- CSV export for filtered order history.
 
 ## Run Locally
 
@@ -59,6 +60,7 @@ make dev
 make setup
 make prod-build
 make test
+make deploy-prod
 make logs
 make stop
 ```
@@ -113,6 +115,17 @@ Service-to-service callers use the same bearer header with a service token. The 
 
 Override this seeded token with `MEDITRACK_SERVICE_TOKEN` when seeding non-local environments. Service account tokens are stored as bcrypt digests. CORS still limits browser origins, but API security is enforced by bearer authentication rather than CORS.
 
+Current role behavior:
+
+| Action | Nurse | Pharmacist | Admin |
+| --- | --- | --- | --- |
+| View assigned unit inventory, low stock, and orders | Yes | Yes | Yes |
+| Open/create orders | Yes | Yes | Yes |
+| Advance orders | No | Yes | Yes |
+| Add/edit medications | No | Yes | Yes |
+| Delete medications | No | No | Yes |
+| View audit log | No | No | Yes |
+
 Example service request:
 
 ```bash
@@ -134,7 +147,7 @@ To test as a human user, first request a session token:
 ```bash
 curl -X POST http://localhost:3001/api/v1/session \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@medovia.test","password":"AdminPass123!"}'
+  -d '{"session":{"email":"admin@medovia.test","password":"AdminPass123!"}}'
 ```
 
 Then pass the returned `token` value on later requests:
@@ -146,25 +159,37 @@ curl -H "Authorization: Bearer <token>" \
 
 ## Tests
 
-Run backend tests:
+Run the full local check:
+
+```bash
+make test
+```
+
+Run backend tests only:
 
 ```bash
 docker compose exec backend bin/rails test
 ```
 
-The included integration test covers medication search/low-stock output and the full order delivery flow with inventory update.
+Run Ruby style checks:
+
+```bash
+docker compose exec backend bin/rubocop
+```
+
+The included integration tests cover authentication, unit-scoped access, medication search/pagination/low-stock output, audit filters, and the full order delivery flow with inventory update.
 
 ## Known Limitations
 
-- Authentication is implemented with demo users and service bearer tokens, but production would still need token rotation, revocation, and rate limiting.
+- Authentication is implemented with demo users, unit-scoped memberships, and service bearer tokens, but production would still need token rotation, revocation, and rate limiting.
 - The AI categorization feature is deterministic rule-based categorization from ATC/name, not an external model call.
 - Inventory is incremented on delivery but does not yet model reservations, supplier partial deliveries, batch numbers, expiry dates, or controlled-substance handling.
 - The UI optimistically keeps workflows simple and refreshes server state after each mutation instead of using a dedicated server-state library.
 
 ## Improvements With More Time
 
-- Add finer-grained permissions, token revocation, and service token rotation workflows.
+- Add token revocation, service token rotation workflows, and finer permission policies for edge cases.
 - Add supplier entities, partial deliveries, batches, expiry dates, and stock adjustment reasons.
 - Add notification delivery for low inventory and order status changes.
-- Add more tests around authorization, validation failures, audit logging, and CSV export.
+- Add more tests around validation failures, audit details, and CSV export.
 - Add OpenAPI documentation and CI checks.
