@@ -121,6 +121,7 @@ function App() {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<"workspace" | "low-stock">("workspace");
   const [loading, setLoading] = useState(true);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [error, setError] = useState("");
 
   const selectedUnit = units.find((unit) => unit.id === unitId);
@@ -200,6 +201,7 @@ function App() {
     setActiveView("workspace");
     setOrderPage(1);
     setOrderMeta({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0, open_count: 0 });
+    setInitialDataLoaded(false);
   }
 
   function orderQueryString(includePagination = true) {
@@ -261,7 +263,7 @@ function App() {
 
   async function refresh(nextUnitId = unitId) {
     if (!nextUnitId) return;
-    setLoading(true);
+    if (!initialDataLoaded) setLoading(true);
     setError("");
     try {
       const [nextMedications, nextLowStock, nextOrders] = await Promise.all([
@@ -283,10 +285,11 @@ function App() {
       } else {
         setAuditLogs([]);
       }
+      setInitialDataLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load data");
     } finally {
-      setLoading(false);
+      if (!initialDataLoaded) setLoading(false);
     }
   }
 
@@ -513,7 +516,7 @@ function App() {
       </header>
 
       {error && <div className="notice error">{error}</div>}
-      {loading && <div className="notice">Loading current inventory and orders...</div>}
+      {loading && !initialDataLoaded && <div className="notice">Loading current inventory and orders...</div>}
 
       <section className="summary-grid">
         <Summary label="Medications" value={medicationMeta.total_count} />

@@ -259,6 +259,7 @@ select {
 
 .table-wrap {
   margin-top: 14px;
+  min-height: 196px;
   overflow-x: auto;
 }
 
@@ -302,6 +303,18 @@ tr.low td:first-child {
   display: grid;
   gap: 10px;
   margin-top: 14px;
+}
+
+.order-lines {
+  min-height: 214px;
+}
+
+.order-history {
+  min-height: 176px;
+}
+
+.audit-list {
+  min-height: 96px;
 }
 
 .split {
