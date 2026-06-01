@@ -46,6 +46,26 @@ make logs
 make stop
 ```
 
+## Deployment
+
+The repository includes root-level GitHub Actions workflows:
+
+- `.github/workflows/ci.yml` runs Rails tests, the React production build, and production Docker image builds.
+- `.github/workflows/deploy.yml` builds/pushes backend and frontend images to GitHub Container Registry, uploads deployment files to a server over SSH, and runs `scripts/deploy.sh`.
+
+Required GitHub repository secrets for deployment:
+
+- `DEPLOY_HOST`: server hostname or IP
+- `DEPLOY_USER`: SSH user with Docker access
+- `DEPLOY_SSH_KEY`: private key for the deploy user
+- `DEPLOY_PATH`: target directory on the server, for example `/opt/meditrack`
+
+Recommended GitHub variable:
+
+- `VITE_API_BASE_URL`: public backend API URL used when building the frontend, for example `https://api.example.com/api/v1`
+
+On the server, create an `.env` file in `DEPLOY_PATH` using `.env.production.example` as a template. At minimum set strong values for `POSTGRES_PASSWORD`, `SECRET_KEY_BASE`, `FRONTEND_ORIGIN`, and public ports. The production runtime uses `docker-compose.prod.yml`.
+
 ## API Role Headers
 
 The frontend exposes a role selector. The backend reads:

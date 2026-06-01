@@ -90,18 +90,18 @@ test:
 production:
   primary: &primary_production
     <<: *default
-    database: backend_production
-    username: backend
-    password: <%= ENV["BACKEND_DATABASE_PASSWORD"] %>
+    database: <%= ENV.fetch("POSTGRES_DB", "meditrack_production") %>
+    username: <%= ENV.fetch("POSTGRES_USER", "meditrack") %>
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
   cache:
     <<: *primary_production
-    database: backend_production_cache
+    database: <%= ENV.fetch("POSTGRES_CACHE_DB", "meditrack_production_cache") %>
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_production
-    database: backend_production_queue
+    database: <%= ENV.fetch("POSTGRES_QUEUE_DB", "meditrack_production_queue") %>
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
-    database: backend_production_cable
+    database: <%= ENV.fetch("POSTGRES_CABLE_DB", "meditrack_production_cable") %>
     migrations_paths: db/cable_migrate
