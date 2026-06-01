@@ -6,6 +6,7 @@
 - PostgreSQL as the primary relational database.
 - Order lifecycle: `draft -> sent -> confirmed -> delivered`.
 - Audit logging for traceability.
+- Bearer authentication for human users and service-to-service callers.
 - React + TypeScript frontend with responsive clinical dashboard.
 - Search by medication name, ATC code, and pharmaceutical form.
 - Threshold-based stock monitoring.

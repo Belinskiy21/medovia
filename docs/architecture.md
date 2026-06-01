@@ -11,6 +11,8 @@ The repository keeps `backend/`, `frontend/`, deployment scripts, and Compose fi
 ## Backend
 
 - REST API is versioned under `/api/v1`.
+- Human users authenticate through `POST /api/v1/session` and use bearer tokens.
+- Service callers authenticate with hashed service account bearer tokens.
 - Domain persistence is modeled with `HealthcareUnit`, `Medication`, `Order`, `OrderLine`, and `AuditLog`.
 - Order lifecycle transition logic lives in `Orders::Advance`.
 - Delivery inventory updates run inside a database transaction and use row locks for the order and affected medications.

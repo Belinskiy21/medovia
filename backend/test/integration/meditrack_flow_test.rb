@@ -22,14 +22,14 @@ class MeditrackFlowTest < ActionDispatch::IntegrationTest
           ]
         }
       },
-      headers: { "X-User-Email" => "nurse@example.test" }
+      headers: auth_headers(role: "nurse", email: "nurse@example.test")
 
     assert_response :created
     order = Order.last
     assert_equal "draft", order.status
 
     3.times do
-      patch advance_api_v1_order_path(order), headers: { "X-User-Role" => "pharmacist" }
+      patch advance_api_v1_order_path(order), headers: auth_headers(role: "pharmacist")
       assert_response :success
       order.reload
     end
@@ -39,11 +39,17 @@ class MeditrackFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "lists medications with search and low inventory flag" do
-    get api_v1_healthcare_unit_medications_path(@unit), params: { q: "C03" }
+    get api_v1_healthcare_unit_medications_path(@unit), params: { q: "C03" }, headers: auth_headers(role: "nurse")
 
     assert_response :success
     body = JSON.parse(response.body)
     assert_equal 1, body.length
     assert_equal true, body.first["low_inventory"]
+  end
+
+  test "rejects unauthenticated api requests" do
+    get api_v1_healthcare_unit_medications_path(@unit), params: { q: "C03" }
+
+    assert_response :unauthorized
   end
 end

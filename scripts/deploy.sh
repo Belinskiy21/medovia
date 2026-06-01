@@ -16,4 +16,7 @@ fi
 
 docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 docker compose -f "$COMPOSE_FILE" exec -T backend ./bin/rails db:prepare
+if [[ "${RUN_SEEDS:-1}" == "1" ]]; then
+  docker compose -f "$COMPOSE_FILE" exec -T backend ./bin/rails db:seed
+fi
 docker compose -f "$COMPOSE_FILE" ps

@@ -10,6 +10,15 @@ emergency = HealthcareUnit.find_or_create_by!(name: "Sahlgrenska Emergency", loc
   user.update!(name:, role:, password:, password_confirmation: password)
 end
 
+service_token = ENV.fetch("MEDITRACK_SERVICE_TOKEN", "svc_meditrack_inventory_demo_token")
+service_account = ServiceAccount.find_or_initialize_by(identifier: "inventory-sync@services.medovia.test")
+service_account.update!(
+  name: "Inventory Sync Service",
+  role: "pharmacist",
+  token: service_token,
+  token_confirmation: service_token
+)
+
 [
   [cardiology, "Metoprolol", "C07AB02", "tablet", "50 mg", 18, 20],
   [cardiology, "Furosemide", "C03CA01", "injection solution", "10 mg/ml", 8, 12],

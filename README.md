@@ -68,14 +68,15 @@ On the server, create an `.env` file in `DEPLOY_PATH` using `.env.production.exa
 
 Architecture notes and requirement tradeoffs are documented in `docs/architecture.md`, `docs/requirements-review.md`, and the ADRs under `docs/adr/`.
 
-## API Role Headers
+## Authentication
 
-The frontend exposes a role selector. The backend reads:
+The frontend signs in through `POST /api/v1/session` and sends the returned token on API requests:
 
-- `X-User-Role`: `nurse`, `pharmacist`, or `admin`
-- `X-User-Email`: actor shown in audit logs and orders
+```http
+Authorization: Bearer <token>
+```
 
-This is intentionally lightweight for the assignment. A production version would use real authentication, signed tokens, and persistent users.
+Human user tokens are Rails-signed tokens with a 12 hour lifetime. Audit logs use the authenticated user email and role.
 
 Seeded demo credentials:
 
@@ -85,7 +86,22 @@ Seeded demo credentials:
 | Pharmacist | `pharmacist@medovia.test` | `PharmacistPass123!` |
 | Admin | `admin@medovia.test` | `AdminPass123!` |
 
-The demo users are persisted with secure password digests and are ready for a future login endpoint. The current UI still uses the role selector and `X-User-*` headers to keep the assignment flow simple.
+The demo users are persisted with secure password digests.
+
+Service-to-service callers use the same bearer header with a service token. The seeded development service account is:
+
+| Service | Identifier | Role | Token |
+| --- | --- | --- | --- |
+| Inventory Sync Service | `inventory-sync@services.medovia.test` | `pharmacist` | `svc_meditrack_inventory_demo_token` |
+
+Override this seeded token with `MEDITRACK_SERVICE_TOKEN` when seeding non-local environments. Service account tokens are stored as bcrypt digests. CORS still limits browser origins, but API security is enforced by bearer authentication rather than CORS.
+
+Example service request:
+
+```bash
+curl -H "Authorization: Bearer svc_meditrack_inventory_demo_token" \
+  http://localhost:3001/api/v1/healthcare_units/1/medications
+```
 
 ## Tests
 
@@ -99,7 +115,7 @@ The included integration test covers medication search/low-stock output and the 
 
 ## Known Limitations
 
-- Authentication is simulated through headers rather than a login flow.
+- Authentication is implemented with demo users and service bearer tokens, but production would still need token rotation, revocation, and rate limiting.
 - The AI categorization feature is deterministic rule-based categorization from ATC/name, not an external model call.
 - Inventory is incremented on delivery but does not yet model reservations, supplier partial deliveries, batch numbers, expiry dates, or controlled-substance handling.
 - The UI optimistically keeps workflows simple and refreshes server state after each mutation instead of using a dedicated server-state library.

@@ -1,12 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, ClipboardList, Download, PackagePlus, Pencil, Plus, RefreshCw, Search, Send, Trash2 } from "lucide-react";
+import { AlertTriangle, ClipboardList, Download, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Search, Send, Trash2 } from "lucide-react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import "./styles.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const roleOptions = ["nurse", "pharmacist", "admin"] as const;
 const medicationForms = ["tablet", "capsule", "injection solution", "oral solution", "inhalation", "cream"];
+const sessionStorageKey = "meditrack.session";
+const demoAccounts = [
+  { role: "nurse", email: "nurse@medovia.test", password: "NursePass123!" },
+  { role: "pharmacist", email: "pharmacist@medovia.test", password: "PharmacistPass123!" },
+  { role: "admin", email: "admin@medovia.test", password: "AdminPass123!" }
+] as const;
 
 type Role = (typeof roleOptions)[number];
 type HealthcareUnit = { id: number; name: string; location: string };
@@ -31,6 +37,8 @@ type Order = {
   order_lines: OrderLine[];
 };
 type AuditLog = { id: number; actor: string; role: string; action: string; created_at: string; metadata: Record<string, unknown> };
+type SessionUser = { id: number; email: string; name: string; role: Role };
+type Session = { token: string; user: SessionUser };
 type MedicationFormState = Omit<Medication, "id" | "healthcare_unit_id" | "category" | "low_inventory">;
 
 const emptyMedication: MedicationFormState = {
@@ -42,13 +50,27 @@ const emptyMedication: MedicationFormState = {
   minimum_threshold: 10
 };
 
+function storedSession(): Session | null {
+  const value = window.localStorage.getItem(sessionStorageKey);
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as Session;
+  } catch {
+    window.localStorage.removeItem(sessionStorageKey);
+    return null;
+  }
+}
+
 function App() {
+  const [session, setSession] = useState<Session | null>(() => storedSession());
+  const [loginEmail, setLoginEmail] = useState<string>(demoAccounts[1].email);
+  const [loginPassword, setLoginPassword] = useState<string>(demoAccounts[1].password);
   const [units, setUnits] = useState<HealthcareUnit[]>([]);
   const [unitId, setUnitId] = useState<number | null>(null);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [role, setRole] = useState<Role>("pharmacist");
   const [query, setQuery] = useState("");
   const [formFilter, setFormFilter] = useState("");
   const [medicationForm, setMedicationForm] = useState<MedicationFormState>(emptyMedication);
@@ -59,14 +81,14 @@ function App() {
 
   const selectedUnit = units.find((unit) => unit.id === unitId);
   const lowStock = medications.filter((medication) => medication.low_inventory);
+  const role = session?.user.role ?? "nurse";
 
   const headers = useMemo(
     () => ({
       "Content-Type": "application/json",
-      "X-User-Role": role,
-      "X-User-Email": `${role}@medovia.test`
+      ...(session ? { Authorization: `Bearer ${session.token}` } : {})
     }),
-    [role]
+    [session]
   );
 
   async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -80,6 +102,42 @@ function App() {
     }
     if (response.status === 204) return undefined as T;
     return response.json();
+  }
+
+  async function login(event: React.FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session: { email: loginEmail, password: loginPassword } })
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error ?? "Login failed");
+      }
+      const nextSession = (await response.json()) as Session;
+      window.localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
+      setSession(nextSession);
+      setUnits([]);
+      setUnitId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function logout() {
+    window.localStorage.removeItem(sessionStorageKey);
+    setSession(null);
+    setUnits([]);
+    setUnitId(null);
+    setMedications([]);
+    setOrders([]);
+    setAuditLogs([]);
   }
 
   async function refresh(nextUnitId = unitId) {
@@ -106,6 +164,11 @@ function App() {
   }
 
   useEffect(() => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     request<HealthcareUnit[]>("/healthcare_units")
       .then((nextUnits) => {
         setUnits(nextUnits);
@@ -116,11 +179,13 @@ function App() {
         setError(err instanceof Error ? err.message : "Unable to load units");
         setLoading(false);
       });
-  }, []);
+  }, [session]);
 
   useEffect(() => {
+    if (!session) return;
+
     refresh();
-  }, [unitId, query, formFilter, role]);
+  }, [unitId, query, formFilter, session]);
 
   function editMedication(medication: Medication) {
     setEditingId(medication.id);
@@ -200,9 +265,60 @@ function App() {
     }
   }
 
-  function exportOrders() {
+  async function exportOrders() {
     if (!unitId) return;
-    window.location.href = `${API_BASE}/healthcare_units/${unitId}/orders_export`;
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}/healthcare_units/${unitId}/orders_export`, { headers });
+      if (!response.ok) throw new Error("Unable to export orders");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `meditrack-orders-unit-${unitId}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to export orders");
+    }
+  }
+
+  if (!session) {
+    return (
+      <main>
+        <section className="login-panel">
+          <div>
+            <h1>MediTrack</h1>
+            <p>Sign in with a seeded demo account.</p>
+          </div>
+          {error && <div className="notice error">{error}</div>}
+          <form className="stack" onSubmit={login}>
+            <select
+              value={loginEmail}
+              onChange={(event) => {
+                const account = demoAccounts.find((item) => item.email === event.target.value);
+                if (!account) return;
+                setLoginEmail(account.email);
+                setLoginPassword(account.password);
+              }}
+              aria-label="Demo account"
+            >
+              {demoAccounts.map((account) => (
+                <option key={account.email} value={account.email}>
+                  {account.role} · {account.email}
+                </option>
+              ))}
+            </select>
+            <input value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} placeholder="Email" />
+            <input type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} placeholder="Password" />
+            <button className="primary" type="submit" disabled={loading}>
+              Sign in
+            </button>
+          </form>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -220,15 +336,12 @@ function App() {
               </option>
             ))}
           </select>
-          <select value={role} onChange={(event) => setRole(event.target.value as Role)} aria-label="Role">
-            {roleOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <span className="user-chip">{session.user.name} · {session.user.role}</span>
           <button className="icon-button" onClick={() => refresh()} aria-label="Refresh">
             <RefreshCw size={18} />
+          </button>
+          <button className="icon-button" onClick={logout} aria-label="Sign out">
+            <LogOut size={18} />
           </button>
         </div>
       </header>
