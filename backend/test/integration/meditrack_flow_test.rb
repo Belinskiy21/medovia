@@ -70,6 +70,25 @@ class MeditrackFlowTest < ActionDispatch::IntegrationTest
     assert_equal 2, body["meta"]["total_pages"]
   end
 
+  test "filters low stock medications" do
+    @unit.medications.create!(
+      name: "Warfarin",
+      atc_code: "B01AA03",
+      form: "tablet",
+      strength: "2.5 mg",
+      inventory_balance: 40,
+      minimum_threshold: 15
+    )
+
+    get api_v1_healthcare_unit_medications_path(@unit), params: { low_stock: true, page: 1, per_page: 10 }, headers: auth_headers(role: "nurse")
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal 1, body["data"].length
+    assert_equal "Furosemide", body["data"].first["name"]
+    assert_equal 1, body["meta"]["total_count"]
+  end
+
   test "filters and paginates order history" do
     tablet = @unit.medications.create!(
       name: "Metoprolol",

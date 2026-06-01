@@ -9,6 +9,7 @@ const roleOptions = ["nurse", "pharmacist", "admin"] as const;
 const orderStatuses = ["draft", "sent", "confirmed", "delivered"] as const;
 const ordersPerPage = 10;
 const medicationsPerPage = 10;
+const lowStockPerPage = 10;
 const medicationForms = ["tablet", "capsule", "injection solution", "oral solution", "inhalation", "cream"];
 const sessionStorageKey = "meditrack.session";
 const demoAccounts = [
@@ -83,6 +84,9 @@ function App() {
   const [registryMedications, setRegistryMedications] = useState<Medication[]>([]);
   const [medicationPage, setMedicationPage] = useState(1);
   const [medicationMeta, setMedicationMeta] = useState<MedicationMeta>({ page: 1, per_page: medicationsPerPage, total_count: 0, total_pages: 0 });
+  const [lowStockMedications, setLowStockMedications] = useState<Medication[]>([]);
+  const [lowStockPage, setLowStockPage] = useState(1);
+  const [lowStockMeta, setLowStockMeta] = useState<MedicationMeta>({ page: 1, per_page: lowStockPerPage, total_count: 0, total_pages: 0 });
   const [orders, setOrders] = useState<Order[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [query, setQuery] = useState("");
@@ -105,7 +109,6 @@ function App() {
   const [error, setError] = useState("");
 
   const selectedUnit = units.find((unit) => unit.id === unitId);
-  const lowStock = medications.filter((medication) => medication.low_inventory);
   const orderMedicationOptions = medications.filter((medication) => {
     const matchesQuery = [medication.name, medication.atc_code, medication.form].some((value) => value.toLowerCase().includes(orderQuery.toLowerCase()));
     const matchesForm = !orderFormFilter || medication.form === orderFormFilter;
@@ -169,6 +172,9 @@ function App() {
     setRegistryMedications([]);
     setMedicationPage(1);
     setMedicationMeta({ page: 1, per_page: medicationsPerPage, total_count: 0, total_pages: 0 });
+    setLowStockMedications([]);
+    setLowStockPage(1);
+    setLowStockMeta({ page: 1, per_page: lowStockPerPage, total_count: 0, total_pages: 0 });
     setOrders([]);
     setAuditLogs([]);
     setSelectedOrderId(null);
@@ -211,17 +217,31 @@ function App() {
     setMedicationPage(1);
   }
 
+  function lowStockQueryString(includePagination = true) {
+    const params = new URLSearchParams();
+    params.set("low_stock", "true");
+    if (includePagination) {
+      params.set("page", String(lowStockPage));
+      params.set("per_page", String(lowStockPerPage));
+    }
+
+    return params.toString();
+  }
+
   async function refresh(nextUnitId = unitId) {
     if (!nextUnitId) return;
     setLoading(true);
     setError("");
     try {
-      const [nextMedications, nextOrders] = await Promise.all([
+      const [nextMedications, nextLowStock, nextOrders] = await Promise.all([
         request<MedicationResponse>(`/healthcare_units/${nextUnitId}/medications?${registryMedicationQueryString()}`),
+        request<MedicationResponse>(`/healthcare_units/${nextUnitId}/medications?${lowStockQueryString()}`),
         request<OrderResponse>(`/healthcare_units/${nextUnitId}/orders?${orderQueryString()}`)
       ]);
       setRegistryMedications(nextMedications.data);
       setMedicationMeta(nextMedications.meta);
+      setLowStockMedications(nextLowStock.data);
+      setLowStockMeta(nextLowStock.meta);
       setOrders(nextOrders.data);
       setOrderMeta(nextOrders.meta);
       const inventory = await request<MedicationResponse>(`/healthcare_units/${nextUnitId}/medications?per_page=1000`);
@@ -260,7 +280,7 @@ function App() {
     if (!session) return;
 
     refresh();
-  }, [unitId, query, formFilter, medicationPage, orderHistoryQuery, orderStatusFilter, orderCreatedByFilter, orderFromDate, orderToDate, orderPage, session]);
+  }, [unitId, query, formFilter, medicationPage, lowStockPage, orderHistoryQuery, orderStatusFilter, orderCreatedByFilter, orderFromDate, orderToDate, orderPage, session]);
 
   function editMedication(medication: Medication) {
     setEditingId(medication.id);
@@ -363,10 +383,21 @@ function App() {
     }
   }
 
-  function exportLowStock() {
+  async function exportLowStock() {
+    if (!unitId) return;
+    setError("");
+    let medicationsToExport = lowStockMedications;
+    try {
+      const response = await request<MedicationResponse>(`/healthcare_units/${unitId}/medications?low_stock=true&per_page=1000`);
+      medicationsToExport = response.data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to export low stock");
+      return;
+    }
+
     const rows = [
       ["Name", "ATC code", "Form", "Strength", "Current balance", "Minimum threshold", "Deficit", "Category"],
-      ...lowStock.map((medication) => [
+      ...medicationsToExport.map((medication) => [
         medication.name,
         medication.atc_code,
         medication.form,
@@ -455,14 +486,14 @@ function App() {
       <section className="summary-grid">
         <Summary label="Medications" value={medicationMeta.total_count} />
         <Summary label="Open orders" value={orderMeta.open_count} />
-        <Summary label="Low stock" value={lowStock.length} urgent={lowStock.length > 0} />
+        <Summary label="Low stock" value={lowStockMeta.total_count} urgent={lowStockMeta.total_count > 0} />
       </section>
 
-      {lowStock.length > 0 && (
+      {lowStockMeta.total_count > 0 && (
         <section className="warning-band">
           <AlertTriangle size={18} />
-          <span>{lowStock.length} medications are below their minimum threshold.</span>
-          <button className="secondary" onClick={() => setActiveView("low-stock")}>
+          <span>{lowStockMeta.total_count} medications are below their minimum threshold.</span>
+          <button className="secondary" onClick={() => { setLowStockPage(1); setActiveView("low-stock"); }}>
             Review list
           </button>
         </section>
@@ -481,7 +512,7 @@ function App() {
         <section className="panel">
           <div className="panel-heading">
             <h2>Low stock medications</h2>
-            <button className="secondary" onClick={exportLowStock} disabled={lowStock.length === 0}>
+            <button className="secondary" onClick={exportLowStock} disabled={lowStockMeta.total_count === 0}>
               <Download size={18} /> CSV
             </button>
           </div>
@@ -499,7 +530,7 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {lowStock.map((medication) => (
+                {lowStockMedications.map((medication) => (
                   <tr key={medication.id} className="low">
                     <td>{medication.name}</td>
                     <td>{medication.atc_code}</td>
@@ -514,7 +545,20 @@ function App() {
                 ))}
               </tbody>
             </table>
-            {lowStock.length === 0 && <p className="empty-state">No medications are below threshold.</p>}
+            {lowStockMedications.length === 0 && <p className="empty-state">No medications are below threshold.</p>}
+          </div>
+          <div className="pagination">
+            <span>
+              Page {lowStockMeta.total_pages === 0 ? 0 : lowStockMeta.page} of {lowStockMeta.total_pages} · {lowStockMeta.total_count} medications
+            </span>
+            <div className="pagination-actions">
+              <button className="secondary" onClick={() => setLowStockPage((page) => Math.max(1, page - 1))} disabled={lowStockPage <= 1}>
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <button className="secondary" onClick={() => setLowStockPage((page) => page + 1)} disabled={lowStockPage >= lowStockMeta.total_pages}>
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </section>
       ) : (
@@ -636,7 +680,7 @@ function App() {
           <div className="panel-heading">
             <h2>Create order</h2>
             <button className="primary" onClick={createOrder}>
-              <Plus size={18} /> Create draft
+              <Plus size={18} /> Open order
             </button>
           </div>
           <div className="filters order-filters">

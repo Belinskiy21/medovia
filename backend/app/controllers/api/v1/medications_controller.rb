@@ -5,6 +5,7 @@ module Api
 
       def index
         medications = @unit.medications.search(params[:q]).by_form(params[:form]).order(:name)
+        medications = medications.where("inventory_balance < minimum_threshold") if params[:low_stock].to_s == "true"
         total_count = medications.count
         page = page_param
         per_page = per_page_param
