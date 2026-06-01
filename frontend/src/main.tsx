@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, ClipboardList, Clock3, Download, Eye, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Search, Send, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, ClipboardList, Clock3, Download, Eye, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Search, Send, Trash2 } from "lucide-react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import "./styles.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const roleOptions = ["nurse", "pharmacist", "admin"] as const;
+const orderStatuses = ["draft", "sent", "confirmed", "delivered"] as const;
+const ordersPerPage = 10;
 const medicationForms = ["tablet", "capsule", "injection solution", "oral solution", "inhalation", "cream"];
 const sessionStorageKey = "meditrack.session";
 const demoAccounts = [
@@ -31,7 +33,7 @@ type Medication = {
 type OrderLine = { id: number; medication_id: number; medication_name: string; atc_code: string; quantity: number };
 type Order = {
   id: number;
-  status: "draft" | "sent" | "confirmed" | "delivered";
+  status: OrderStatus;
   created_by: string;
   created_at: string;
   sent_at: string | null;
@@ -39,6 +41,9 @@ type Order = {
   delivered_at: string | null;
   order_lines: OrderLine[];
 };
+type OrderStatus = (typeof orderStatuses)[number];
+type OrderMeta = { page: number; per_page: number; total_count: number; total_pages: number };
+type OrderResponse = { data: Order[]; meta: OrderMeta };
 type AuditLog = { id: number; actor: string; role: string; action: string; created_at: string; metadata: Record<string, unknown> };
 type SessionUser = { id: number; email: string; name: string; role: Role };
 type Session = { token: string; user: SessionUser };
@@ -78,6 +83,13 @@ function App() {
   const [formFilter, setFormFilter] = useState("");
   const [orderQuery, setOrderQuery] = useState("");
   const [orderFormFilter, setOrderFormFilter] = useState("");
+  const [orderHistoryQuery, setOrderHistoryQuery] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("");
+  const [orderCreatedByFilter, setOrderCreatedByFilter] = useState("");
+  const [orderFromDate, setOrderFromDate] = useState("");
+  const [orderToDate, setOrderToDate] = useState("");
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderMeta, setOrderMeta] = useState<OrderMeta>({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0 });
   const [medicationForm, setMedicationForm] = useState<MedicationFormState>(emptyMedication);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [orderLines, setOrderLines] = useState<Record<number, number>>({});
@@ -152,6 +164,28 @@ function App() {
     setAuditLogs([]);
     setSelectedOrderId(null);
     setActiveView("workspace");
+    setOrderPage(1);
+    setOrderMeta({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0 });
+  }
+
+  function orderQueryString(includePagination = true) {
+    const params = new URLSearchParams();
+    if (orderHistoryQuery) params.set("q", orderHistoryQuery);
+    if (orderStatusFilter) params.set("status", orderStatusFilter);
+    if (orderCreatedByFilter) params.set("created_by", orderCreatedByFilter);
+    if (orderFromDate) params.set("from", orderFromDate);
+    if (orderToDate) params.set("to", orderToDate);
+    if (includePagination) {
+      params.set("page", String(orderPage));
+      params.set("per_page", String(ordersPerPage));
+    }
+
+    return params.toString();
+  }
+
+  function resetOrderPage() {
+    setOrderPage(1);
+    setSelectedOrderId(null);
   }
 
   async function refresh(nextUnitId = unitId) {
@@ -161,10 +195,11 @@ function App() {
     try {
       const [nextMedications, nextOrders] = await Promise.all([
         request<Medication[]>(`/healthcare_units/${nextUnitId}/medications?q=${encodeURIComponent(query)}&form=${encodeURIComponent(formFilter)}`),
-        request<Order[]>(`/healthcare_units/${nextUnitId}/orders`)
+        request<OrderResponse>(`/healthcare_units/${nextUnitId}/orders?${orderQueryString()}`)
       ]);
       setMedications(nextMedications);
-      setOrders(nextOrders);
+      setOrders(nextOrders.data);
+      setOrderMeta(nextOrders.meta);
       if (role === "admin") {
         setAuditLogs(await request<AuditLog[]>("/audit_logs"));
       } else {
@@ -199,7 +234,7 @@ function App() {
     if (!session) return;
 
     refresh();
-  }, [unitId, query, formFilter, session]);
+  }, [unitId, query, formFilter, orderHistoryQuery, orderStatusFilter, orderCreatedByFilter, orderFromDate, orderToDate, orderPage, session]);
 
   function editMedication(medication: Medication) {
     setEditingId(medication.id);
@@ -264,6 +299,7 @@ function App() {
       });
       setOrderLines({});
       setSelectedOrderId(null);
+      setOrderPage(1);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create order");
@@ -284,7 +320,8 @@ function App() {
     if (!unitId) return;
     setError("");
     try {
-      const response = await fetch(`${API_BASE}/healthcare_units/${unitId}/orders_export`, { headers });
+      const queryString = orderQueryString(false);
+      const response = await fetch(`${API_BASE}/healthcare_units/${unitId}/orders_export${queryString ? `?${queryString}` : ""}`, { headers });
       if (!response.ok) throw new Error("Unable to export orders");
 
       const blob = await response.blob();
@@ -582,6 +619,60 @@ function App() {
               <Download size={18} /> CSV
             </button>
           </div>
+          <div className="filters order-history-filters">
+            <label>
+              <Search size={16} />
+              <input
+                value={orderHistoryQuery}
+                onChange={(event) => {
+                  setOrderHistoryQuery(event.target.value);
+                  resetOrderPage();
+                }}
+                placeholder="Medication or ATC"
+              />
+            </label>
+            <select
+              value={orderStatusFilter}
+              onChange={(event) => {
+                setOrderStatusFilter(event.target.value);
+                resetOrderPage();
+              }}
+              aria-label="Filter orders by status"
+            >
+              <option value="">All statuses</option>
+              {orderStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+            <input
+              value={orderCreatedByFilter}
+              onChange={(event) => {
+                setOrderCreatedByFilter(event.target.value);
+                resetOrderPage();
+              }}
+              placeholder="Created by"
+            />
+            <input
+              type="date"
+              value={orderFromDate}
+              onChange={(event) => {
+                setOrderFromDate(event.target.value);
+                resetOrderPage();
+              }}
+              aria-label="Orders from date"
+            />
+            <input
+              type="date"
+              value={orderToDate}
+              onChange={(event) => {
+                setOrderToDate(event.target.value);
+                resetOrderPage();
+              }}
+              aria-label="Orders to date"
+            />
+          </div>
           <div className="order-history">
             {orders.map((order) => (
               <article key={order.id} className="order-card">
@@ -610,6 +701,20 @@ function App() {
                 {selectedOrderId === order.id && <OrderDetails order={order} />}
               </article>
             ))}
+            {orders.length === 0 && <p className="empty-state">No orders match these filters.</p>}
+          </div>
+          <div className="pagination">
+            <span>
+              Page {orderMeta.total_pages === 0 ? 0 : orderMeta.page} of {orderMeta.total_pages} · {orderMeta.total_count} orders
+            </span>
+            <div className="pagination-actions">
+              <button className="secondary" onClick={() => setOrderPage((page) => Math.max(1, page - 1))} disabled={orderPage <= 1}>
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <button className="secondary" onClick={() => setOrderPage((page) => page + 1)} disabled={orderPage >= orderMeta.total_pages}>
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </section>
