@@ -18,11 +18,27 @@ Core entities are `HealthcareUnit`, `Medication`, `Order`, and `OrderLine`. `Ord
 - Order history per healthcare unit.
 - Automatic inventory update on delivery.
 - Low inventory warnings.
-- Role-based API checks using request headers for `nurse`, `pharmacist`, and `admin`.
+- Role-based API checks using bearer-authenticated users and service accounts.
 - Audit log for critical mutations.
 - CSV export for order history.
 
 ## Run Locally
+
+No `.env` file is required for local development. Docker Compose, Rails, and Vite all have development defaults:
+
+- PostgreSQL runs from `docker-compose.yml`.
+- Rails seeds demo users, sample healthcare units, medications, orders, and a service account.
+- The frontend uses `http://localhost:3001/api/v1` unless `VITE_API_BASE_URL` is set.
+- The service account token defaults to `svc_meditrack_inventory_demo_token` unless `MEDITRACK_SERVICE_TOKEN` is set.
+
+Normal development flow:
+
+```bash
+make setup
+make dev
+```
+
+For a clean rebuild:
 
 ```bash
 make dev-build
@@ -40,6 +56,7 @@ Useful commands:
 ```bash
 make help
 make dev
+make setup
 make prod-build
 make test
 make logs
@@ -122,7 +139,7 @@ The included integration test covers medication search/low-stock output and the 
 
 ## Improvements With More Time
 
-- Add real authentication and finer-grained permissions.
+- Add finer-grained permissions, token revocation, and service token rotation workflows.
 - Add supplier entities, partial deliveries, batches, expiry dates, and stock adjustment reasons.
 - Add notification delivery for low inventory and order status changes.
 - Add more tests around authorization, validation failures, audit logging, and CSV export.

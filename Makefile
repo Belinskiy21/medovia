@@ -1,11 +1,12 @@
 COMPOSE := docker compose
 PROD_COMPOSE := docker compose -f docker-compose.prod.yml
 
-.PHONY: help dev dev-build prod prod-build deploy-prod stop restart status logs logs-backend logs-frontend test test-backend test-frontend build shell-backend shell-frontend db-console clean reset
+.PHONY: help setup dev dev-build prod prod-build deploy-prod stop restart status logs logs-backend logs-frontend test test-backend test-frontend build shell-backend shell-frontend db-console clean reset
 
 help:
 	@echo "MediTrack commands"
 	@echo ""
+	@echo "  make setup          Build local development images"
 	@echo "  make dev            Start the full app in development mode"
 	@echo "  make dev-build      Rebuild images and start the full app"
 	@echo "  make prod           Start production compose using configured images"
@@ -20,6 +21,9 @@ help:
 	@echo "  make shell-frontend Open a shell in the React container"
 	@echo "  make clean          Stop containers and remove anonymous build output"
 	@echo "  make reset          Stop containers and remove project volumes"
+
+setup:
+	$(COMPOSE) build
 
 dev:
 	$(COMPOSE) up
