@@ -1,0 +1,9 @@
+.DS_Store
+backend/log/*
+backend/tmp/*
+backend/storage/*
+backend/config/master.key
+backend/.bundle
+backend/vendor/bundle
+frontend/node_modules
+frontend/dist
