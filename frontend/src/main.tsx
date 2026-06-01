@@ -737,7 +737,7 @@ function App() {
             {orderMedicationOptions.map((medication) => (
               <label key={medication.id} className={medication.low_inventory ? "order-line low" : "order-line"}>
                 <span>
-                  {medication.name}
+                  <strong>{medication.name}</strong>
                   <small>{medication.atc_code} · current {medication.inventory_balance}</small>
                 </span>
                 <input type="number" min="0" value={orderLines[medication.id] ?? 0} onChange={(event) => setOrderLines({ ...orderLines, [medication.id]: Number(event.target.value) })} />

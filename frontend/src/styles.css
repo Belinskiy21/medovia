@@ -286,9 +286,13 @@ tr.low td:first-child {
   font-weight: 700;
 }
 
-.order-line.low span > :first-child {
+.order-line.low strong {
   color: #b44900;
   font-weight: 700;
+}
+
+.order-line strong {
+  font-weight: 500;
 }
 
 .stack,
