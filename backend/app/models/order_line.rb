@@ -4,6 +4,7 @@ class OrderLine < ApplicationRecord
 
   validates :quantity, numericality: { greater_than: 0, only_integer: true }
   validate :medication_matches_order_unit
+  validate :immutable_after_order_is_sent, on: :update
 
   private
 
@@ -13,5 +14,11 @@ class OrderLine < ApplicationRecord
     if medication.healthcare_unit_id != order.healthcare_unit_id
       errors.add(:medication, "must belong to the order healthcare unit")
     end
+  end
+
+  def immutable_after_order_is_sent
+    return if order.blank? || order.status == "draft"
+
+    errors.add(:base, "Order history cannot be changed after an order leaves draft")
   end
 end

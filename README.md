@@ -66,6 +66,8 @@ Recommended GitHub variable:
 
 On the server, create an `.env` file in `DEPLOY_PATH` using `.env.production.example` as a template. At minimum set strong values for `POSTGRES_PASSWORD`, `SECRET_KEY_BASE`, `FRONTEND_ORIGIN`, and public ports. The production runtime uses `docker-compose.prod.yml`.
 
+Architecture notes and requirement tradeoffs are documented in `docs/architecture.md`, `docs/requirements-review.md`, and the ADRs under `docs/adr/`.
+
 ## API Role Headers
 
 The frontend exposes a role selector. The backend reads:

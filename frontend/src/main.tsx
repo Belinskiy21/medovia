@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AlertTriangle, ClipboardList, Download, PackagePlus, Pencil, Plus, RefreshCw, Search, Send, Trash2 } from "lucide-react";
+import { ErrorBoundary } from "./ErrorBoundary";
 import "./styles.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api/v1";
@@ -416,4 +417,8 @@ function Status({ status }: { status: Order["status"] }) {
   return <span className={`status ${status}`}>{status}</span>;
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
