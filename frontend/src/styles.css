@@ -114,6 +114,10 @@ select {
   padding-left: 0;
 }
 
+.order-filters {
+  margin-top: 14px;
+}
+
 .notice,
 .warning-band {
   align-items: center;
@@ -300,6 +304,11 @@ tr.low td:first-child {
 .order-line span,
 .audit-list div {
   display: grid;
+}
+
+.empty-state {
+  color: #64736f;
+  padding: 8px 0;
 }
 
 .order-card {

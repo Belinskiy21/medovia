@@ -76,6 +76,8 @@ function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [query, setQuery] = useState("");
   const [formFilter, setFormFilter] = useState("");
+  const [orderQuery, setOrderQuery] = useState("");
+  const [orderFormFilter, setOrderFormFilter] = useState("");
   const [medicationForm, setMedicationForm] = useState<MedicationFormState>(emptyMedication);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [orderLines, setOrderLines] = useState<Record<number, number>>({});
@@ -85,6 +87,11 @@ function App() {
 
   const selectedUnit = units.find((unit) => unit.id === unitId);
   const lowStock = medications.filter((medication) => medication.low_inventory);
+  const orderMedicationOptions = medications.filter((medication) => {
+    const matchesQuery = [medication.name, medication.atc_code, medication.form].some((value) => value.toLowerCase().includes(orderQuery.toLowerCase()));
+    const matchesForm = !orderFormFilter || medication.form === orderFormFilter;
+    return matchesQuery && matchesForm;
+  });
   const role = session?.user.role ?? "nurse";
 
   const headers = useMemo(
@@ -459,8 +466,22 @@ function App() {
               <Plus size={18} /> Create draft
             </button>
           </div>
+          <div className="filters order-filters">
+            <label>
+              <Search size={16} />
+              <input value={orderQuery} onChange={(event) => setOrderQuery(event.target.value)} placeholder="Name, ATC, form" />
+            </label>
+            <select value={orderFormFilter} onChange={(event) => setOrderFormFilter(event.target.value)} aria-label="Filter order medications by form">
+              <option value="">All forms</option>
+              {medicationForms.map((form) => (
+                <option key={form} value={form}>
+                  {form}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="order-lines">
-            {medications.map((medication) => (
+            {orderMedicationOptions.map((medication) => (
               <label key={medication.id} className="order-line">
                 <span>
                   {medication.name}
@@ -469,6 +490,7 @@ function App() {
                 <input type="number" min="0" value={orderLines[medication.id] ?? 0} onChange={(event) => setOrderLines({ ...orderLines, [medication.id]: Number(event.target.value) })} />
               </label>
             ))}
+            {orderMedicationOptions.length === 0 && <p className="empty-state">No medications match this order filter.</p>}
           </div>
         </div>
 
