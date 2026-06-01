@@ -123,6 +123,8 @@ function App() {
     return matchesQuery && matchesForm;
   });
   const role = currentMembership?.role ?? "nurse";
+  const canManageMedications = role === "pharmacist" || role === "admin";
+  const canDeleteMedications = role === "admin";
 
   const headers = useMemo(
     () => ({
@@ -616,7 +618,7 @@ function App() {
                   <th>Strength</th>
                   <th>Balance</th>
                   <th>Category</th>
-                  <th></th>
+                  {canManageMedications && <th></th>}
                 </tr>
               </thead>
               <tbody>
@@ -630,14 +632,18 @@ function App() {
                       {medication.inventory_balance} / {medication.minimum_threshold}
                     </td>
                     <td>{medication.category}</td>
-                    <td className="row-actions">
-                      <button className="icon-button" onClick={() => editMedication(medication)} aria-label={`Edit ${medication.name}`}>
-                        <Pencil size={16} />
-                      </button>
-                      <button className="icon-button danger" onClick={() => deleteMedication(medication.id)} aria-label={`Delete ${medication.name}`}>
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+                    {canManageMedications && (
+                      <td className="row-actions">
+                        <button className="icon-button" onClick={() => editMedication(medication)} aria-label={`Edit ${medication.name}`}>
+                          <Pencil size={16} />
+                        </button>
+                        {canDeleteMedications && (
+                          <button className="icon-button danger" onClick={() => deleteMedication(medication.id)} aria-label={`Delete ${medication.name}`}>
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -659,28 +665,30 @@ function App() {
           </div>
         </section>
 
-        <aside className="panel">
-          <h2>{editingId ? "Edit medication" : "Add medication"}</h2>
-          <form className="stack" onSubmit={submitMedication}>
-            <input required value={medicationForm.name} onChange={(event) => setMedicationForm({ ...medicationForm, name: event.target.value })} placeholder="Name" />
-            <input required value={medicationForm.atc_code} onChange={(event) => setMedicationForm({ ...medicationForm, atc_code: event.target.value.toUpperCase() })} placeholder="ATC code" />
-            <select value={medicationForm.form} onChange={(event) => setMedicationForm({ ...medicationForm, form: event.target.value })}>
-              {medicationForms.map((form) => (
-                <option key={form} value={form}>
-                  {form}
-                </option>
-              ))}
-            </select>
-            <input required value={medicationForm.strength} onChange={(event) => setMedicationForm({ ...medicationForm, strength: event.target.value })} placeholder="Strength" />
-            <div className="split">
-              <input type="number" min="0" value={medicationForm.inventory_balance} onChange={(event) => setMedicationForm({ ...medicationForm, inventory_balance: Number(event.target.value) })} aria-label="Inventory balance" />
-              <input type="number" min="0" value={medicationForm.minimum_threshold} onChange={(event) => setMedicationForm({ ...medicationForm, minimum_threshold: Number(event.target.value) })} aria-label="Minimum threshold" />
-            </div>
-            <button className="primary" type="submit">
-              <PackagePlus size={18} /> {editingId ? "Update" : "Add"}
-            </button>
-          </form>
-        </aside>
+        {canManageMedications && (
+          <aside className="panel">
+            <h2>{editingId ? "Edit medication" : "Add medication"}</h2>
+            <form className="stack" onSubmit={submitMedication}>
+              <input required value={medicationForm.name} onChange={(event) => setMedicationForm({ ...medicationForm, name: event.target.value })} placeholder="Name" />
+              <input required value={medicationForm.atc_code} onChange={(event) => setMedicationForm({ ...medicationForm, atc_code: event.target.value.toUpperCase() })} placeholder="ATC code" />
+              <select value={medicationForm.form} onChange={(event) => setMedicationForm({ ...medicationForm, form: event.target.value })}>
+                {medicationForms.map((form) => (
+                  <option key={form} value={form}>
+                    {form}
+                  </option>
+                ))}
+              </select>
+              <input required value={medicationForm.strength} onChange={(event) => setMedicationForm({ ...medicationForm, strength: event.target.value })} placeholder="Strength" />
+              <div className="split">
+                <input type="number" min="0" value={medicationForm.inventory_balance} onChange={(event) => setMedicationForm({ ...medicationForm, inventory_balance: Number(event.target.value) })} aria-label="Inventory balance" />
+                <input type="number" min="0" value={medicationForm.minimum_threshold} onChange={(event) => setMedicationForm({ ...medicationForm, minimum_threshold: Number(event.target.value) })} aria-label="Minimum threshold" />
+              </div>
+              <button className="primary" type="submit">
+                <PackagePlus size={18} /> {editingId ? "Update" : "Add"}
+              </button>
+            </form>
+          </aside>
+        )}
       </div>
 
       <section className="orders-grid">
