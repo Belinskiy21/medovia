@@ -596,65 +596,65 @@ function App() {
       ) : (
         <>
 
-      <div className="workspace">
-        <section className="panel medication-panel">
-          <div className="panel-heading">
-            <h2>Medication registry</h2>
-            <div className="filters">
-              <label>
-                <Search size={16} />
-                <input
-                  value={query}
+      {canManageMedications && (
+        <div className="workspace">
+          <section className="panel medication-panel">
+            <div className="panel-heading">
+              <h2>Medication registry</h2>
+              <div className="filters">
+                <label>
+                  <Search size={16} />
+                  <input
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      resetMedicationPage();
+                    }}
+                    placeholder="Name, ATC, form"
+                  />
+                </label>
+                <select
+                  value={formFilter}
                   onChange={(event) => {
-                    setQuery(event.target.value);
+                    setFormFilter(event.target.value);
                     resetMedicationPage();
                   }}
-                  placeholder="Name, ATC, form"
-                />
-              </label>
-              <select
-                value={formFilter}
-                onChange={(event) => {
-                  setFormFilter(event.target.value);
-                  resetMedicationPage();
-                }}
-                aria-label="Filter by form"
-              >
-                <option value="">All forms</option>
-                {medicationForms.map((form) => (
-                  <option key={form} value={form}>
-                    {form}
-                  </option>
-                ))}
-              </select>
+                  aria-label="Filter by form"
+                >
+                  <option value="">All forms</option>
+                  {medicationForms.map((form) => (
+                    <option key={form} value={form}>
+                      {form}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>ATC</th>
-                  <th>Form</th>
-                  <th>Strength</th>
-                  <th>Balance</th>
-                  <th>Category</th>
-                  {canManageMedications && <th></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {registryMedications.map((medication) => (
-                  <tr key={medication.id} className={medication.low_inventory ? "low" : ""}>
-                    <td>{medication.name}</td>
-                    <td>{medication.atc_code}</td>
-                    <td>{medication.form}</td>
-                    <td>{medication.strength}</td>
-                    <td>
-                      {medication.inventory_balance} / {medication.minimum_threshold}
-                    </td>
-                    <td>{medication.category}</td>
-                    {canManageMedications && (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>ATC</th>
+                    <th>Form</th>
+                    <th>Strength</th>
+                    <th>Balance</th>
+                    <th>Category</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registryMedications.map((medication) => (
+                    <tr key={medication.id} className={medication.low_inventory ? "low" : ""}>
+                      <td>{medication.name}</td>
+                      <td>{medication.atc_code}</td>
+                      <td>{medication.form}</td>
+                      <td>{medication.strength}</td>
+                      <td>
+                        {medication.inventory_balance} / {medication.minimum_threshold}
+                      </td>
+                      <td>{medication.category}</td>
                       <td className="row-actions">
                         <button className="icon-button" onClick={() => editMedication(medication)} aria-label={`Edit ${medication.name}`}>
                           <Pencil size={16} />
@@ -665,29 +665,27 @@ function App() {
                           </button>
                         )}
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {registryMedications.length === 0 && <p className="empty-state">No medications match these filters.</p>}
-          </div>
-          <div className="pagination">
-            <span>
-              Page {medicationMeta.total_pages === 0 ? 0 : medicationMeta.page} of {medicationMeta.total_pages} · {medicationMeta.total_count} medications
-            </span>
-            <div className="pagination-actions">
-              <button className="secondary" onClick={() => setMedicationPage((page) => Math.max(1, page - 1))} disabled={medicationPage <= 1}>
-                <ChevronLeft size={16} /> Previous
-              </button>
-              <button className="secondary" onClick={() => setMedicationPage((page) => page + 1)} disabled={medicationPage >= medicationMeta.total_pages}>
-                Next <ChevronRight size={16} />
-              </button>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {registryMedications.length === 0 && <p className="empty-state">No medications match these filters.</p>}
             </div>
-          </div>
-        </section>
+            <div className="pagination">
+              <span>
+                Page {medicationMeta.total_pages === 0 ? 0 : medicationMeta.page} of {medicationMeta.total_pages} · {medicationMeta.total_count} medications
+              </span>
+              <div className="pagination-actions">
+                <button className="secondary" onClick={() => setMedicationPage((page) => Math.max(1, page - 1))} disabled={medicationPage <= 1}>
+                  <ChevronLeft size={16} /> Previous
+                </button>
+                <button className="secondary" onClick={() => setMedicationPage((page) => page + 1)} disabled={medicationPage >= medicationMeta.total_pages}>
+                  Next <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </section>
 
-        {canManageMedications && (
           <aside className="panel">
             <h2>{editingId ? "Edit medication" : "Add medication"}</h2>
             <form className="stack" onSubmit={submitMedication}>
@@ -710,8 +708,8 @@ function App() {
               </button>
             </form>
           </aside>
-        )}
-      </div>
+        </div>
+      )}
 
       <section className="orders-grid">
         <div className="panel">
