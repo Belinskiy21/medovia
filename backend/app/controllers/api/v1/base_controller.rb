@@ -41,6 +41,11 @@ module Api
 
       def audit!(action, record, metadata = {})
         unit = healthcare_unit_for(record)
+        metadata = metadata.merge(
+          healthcare_unit_id: unit&.id,
+          healthcare_unit_name: unit&.name
+        ).compact
+
         AuditLog.create!(
           actor: current_actor,
           role: current_role(unit) || "service",

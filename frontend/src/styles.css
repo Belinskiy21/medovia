@@ -124,6 +124,12 @@ select {
   margin-top: 14px;
 }
 
+.audit-filters {
+  display: grid;
+  grid-template-columns: 180px minmax(160px, 1fr) 150px 180px 140px 140px;
+  margin-top: 14px;
+}
+
 .notice,
 .warning-band {
   align-items: center;
@@ -441,7 +447,7 @@ tr.low td:first-child {
   align-items: center;
   border-bottom: 1px solid #e4ebe9;
   gap: 8px;
-  grid-template-columns: 20px 1fr auto;
+  grid-template-columns: 20px minmax(180px, 1fr) minmax(160px, 1fr) auto;
   padding-bottom: 8px;
 }
 
@@ -476,6 +482,11 @@ tr.low td:first-child {
   }
 
   .order-history-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-filters,
+  .audit-list div {
     grid-template-columns: 1fr;
   }
 }

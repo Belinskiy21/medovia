@@ -7,6 +7,8 @@ import "./styles.css";
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const roleOptions = ["nurse", "pharmacist", "admin"] as const;
 const orderStatuses = ["draft", "sent", "confirmed", "delivered"] as const;
+const auditActions = ["medication.created", "medication.updated", "medication.deleted", "order.created", "order.advanced"] as const;
+const auditRecordTypes = ["Medication", "Order"] as const;
 const ordersPerPage = 10;
 const medicationsPerPage = 10;
 const lowStockPerPage = 10;
@@ -48,7 +50,7 @@ type MedicationMeta = { page: number; per_page: number; total_count: number; tot
 type MedicationResponse = { data: Medication[]; meta: MedicationMeta };
 type OrderMeta = { page: number; per_page: number; total_count: number; total_pages: number; open_count: number };
 type OrderResponse = { data: Order[]; meta: OrderMeta };
-type AuditLog = { id: number; actor: string; role: string; action: string; created_at: string; metadata: Record<string, unknown> };
+type AuditLog = { id: number; actor: string; role: string; action: string; auditable_type: string; auditable_id: number; created_at: string; metadata: Record<string, unknown> };
 type UserMembership = { healthcare_unit_id: number; healthcare_unit_name: string; role: Role };
 type SessionUser = { id: number; email: string; name: string; memberships: UserMembership[] };
 type Session = { token: string; user: SessionUser };
@@ -105,6 +107,12 @@ function App() {
   const [orderCreatedByFilter, setOrderCreatedByFilter] = useState("");
   const [orderFromDate, setOrderFromDate] = useState("");
   const [orderToDate, setOrderToDate] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditActorFilter, setAuditActorFilter] = useState("");
+  const [auditRecordTypeFilter, setAuditRecordTypeFilter] = useState("");
+  const [auditUnitFilter, setAuditUnitFilter] = useState("");
+  const [auditFromDate, setAuditFromDate] = useState("");
+  const [auditToDate, setAuditToDate] = useState("");
   const [orderPage, setOrderPage] = useState(1);
   const [orderMeta, setOrderMeta] = useState<OrderMeta>({ page: 1, per_page: ordersPerPage, total_count: 0, total_pages: 0, open_count: 0 });
   const [medicationForm, setMedicationForm] = useState<MedicationFormState>(emptyMedication);
@@ -239,6 +247,18 @@ function App() {
     return params.toString();
   }
 
+  function auditQueryString() {
+    const params = new URLSearchParams();
+    if (auditActionFilter) params.set("action", auditActionFilter);
+    if (auditActorFilter) params.set("actor", auditActorFilter);
+    if (auditRecordTypeFilter) params.set("record_type", auditRecordTypeFilter);
+    if (auditUnitFilter) params.set("healthcare_unit_id", auditUnitFilter);
+    if (auditFromDate) params.set("from", auditFromDate);
+    if (auditToDate) params.set("to", auditToDate);
+
+    return params.toString();
+  }
+
   async function refresh(nextUnitId = unitId) {
     if (!nextUnitId) return;
     setLoading(true);
@@ -258,7 +278,8 @@ function App() {
       const inventory = await request<MedicationResponse>(`/healthcare_units/${nextUnitId}/medications?per_page=1000`);
       setMedications(inventory.data);
       if (role === "admin") {
-        setAuditLogs(await request<AuditLog[]>("/audit_logs"));
+        const auditQuery = auditQueryString();
+        setAuditLogs(await request<AuditLog[]>(`/audit_logs${auditQuery ? `?${auditQuery}` : ""}`));
       } else {
         setAuditLogs([]);
       }
@@ -291,7 +312,7 @@ function App() {
     if (!session) return;
 
     refresh();
-  }, [unitId, query, formFilter, medicationPage, lowStockPage, orderHistoryQuery, orderStatusFilter, orderCreatedByFilter, orderFromDate, orderToDate, orderPage, session]);
+  }, [unitId, query, formFilter, medicationPage, lowStockPage, orderHistoryQuery, orderStatusFilter, orderCreatedByFilter, orderFromDate, orderToDate, orderPage, auditActionFilter, auditActorFilter, auditRecordTypeFilter, auditUnitFilter, auditFromDate, auditToDate, session]);
 
   function editMedication(medication: Medication) {
     setEditingId(medication.id);
@@ -837,15 +858,51 @@ function App() {
 
       {role === "admin" && (
         <section className="panel">
-          <h2>Audit log</h2>
+          <div className="panel-heading">
+            <h2>Audit log</h2>
+            <button className="secondary" onClick={() => { setAuditActionFilter(""); setAuditActorFilter(""); setAuditRecordTypeFilter(""); setAuditUnitFilter(""); setAuditFromDate(""); setAuditToDate(""); }}>
+              Clear filters
+            </button>
+          </div>
+          <div className="filters audit-filters">
+            <select value={auditActionFilter} onChange={(event) => setAuditActionFilter(event.target.value)} aria-label="Filter audit log by action">
+              <option value="">All actions</option>
+              {auditActions.map((action) => (
+                <option key={action} value={action}>
+                  {action}
+                </option>
+              ))}
+            </select>
+            <input value={auditActorFilter} onChange={(event) => setAuditActorFilter(event.target.value)} placeholder="Actor" />
+            <select value={auditRecordTypeFilter} onChange={(event) => setAuditRecordTypeFilter(event.target.value)} aria-label="Filter audit log by record type">
+              <option value="">All records</option>
+              {auditRecordTypes.map((recordType) => (
+                <option key={recordType} value={recordType}>
+                  {recordType}
+                </option>
+              ))}
+            </select>
+            <select value={auditUnitFilter} onChange={(event) => setAuditUnitFilter(event.target.value)} aria-label="Filter audit log by healthcare unit">
+              <option value="">All units</option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.name}
+                </option>
+              ))}
+            </select>
+            <input type="date" value={auditFromDate} onChange={(event) => setAuditFromDate(event.target.value)} aria-label="Audit from date" />
+            <input type="date" value={auditToDate} onChange={(event) => setAuditToDate(event.target.value)} aria-label="Audit to date" />
+          </div>
           <div className="audit-list">
             {auditLogs.map((log) => (
               <div key={log.id}>
                 <ClipboardList size={16} />
-                <span>{log.action}</span>
+                <span>{auditTitle(log)}</span>
+                <small>{auditDetails(log)}</small>
                 <small>{log.actor} · {new Date(log.created_at).toLocaleString()}</small>
               </div>
             ))}
+            {auditLogs.length === 0 && <p className="empty-state">No audit events match these filters.</p>}
           </div>
         </section>
       )}
@@ -889,6 +946,25 @@ function OrderDetails({ order }: { order: Order }) {
       </div>
     </div>
   );
+}
+
+function auditTitle(log: AuditLog) {
+  const record = `${log.auditable_type} #${log.auditable_id}`;
+  if (log.action === "order.advanced") return `${record} advanced: ${String(log.metadata.from)} -> ${String(log.metadata.to)}`;
+  if (log.action === "order.created") return `${record} created`;
+  if (log.action === "medication.created") return `${record} created`;
+  if (log.action === "medication.updated") return `${record} updated`;
+  if (log.action === "medication.deleted") return `${record} deleted`;
+
+  return `${record} ${log.action}`;
+}
+
+function auditDetails(log: AuditLog) {
+  const unit = typeof log.metadata.healthcare_unit_name === "string" ? log.metadata.healthcare_unit_name : "";
+  const lineCount = log.metadata.line_count ? `${String(log.metadata.line_count)} order lines` : "";
+  const medication = log.metadata.medication && typeof log.metadata.medication === "object" ? log.metadata.medication as Record<string, unknown> : null;
+  const medicationName = medication?.name ? String(medication.name) : "";
+  return [unit, medicationName, lineCount, log.role].filter(Boolean).join(" · ");
 }
 
 createRoot(document.getElementById("root")!).render(
