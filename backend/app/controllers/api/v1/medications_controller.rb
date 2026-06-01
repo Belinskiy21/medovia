@@ -4,6 +4,8 @@ module Api
       before_action :set_unit, only: [ :index, :create ]
 
       def index
+        return unless unit_access_allowed?(@unit)
+
         medications = @unit.medications.search(params[:q]).by_form(params[:form]).order(:name)
         medications = medications.where("inventory_balance < minimum_threshold") if params[:low_stock].to_s == "true"
         total_count = medications.count
@@ -23,11 +25,14 @@ module Api
       end
 
       def show
-        render json: MedicationSerializer.render(Medication.find(params[:id]))
+        medication = Medication.find(params[:id])
+        return unless unit_access_allowed?(medication.healthcare_unit)
+
+        render json: MedicationSerializer.render(medication)
       end
 
       def create
-        return unless role_allowed?("pharmacist", "admin")
+        return unless role_allowed?("pharmacist", "admin", healthcare_unit: @unit)
 
         medication = @unit.medications.create!(medication_params)
         audit!("medication.created", medication, medication: medication.slice(:name, :atc_code, :form, :strength))
@@ -35,18 +40,18 @@ module Api
       end
 
       def update
-        return unless role_allowed?("pharmacist", "admin")
-
         medication = Medication.find(params[:id])
+        return unless role_allowed?("pharmacist", "admin", healthcare_unit: medication.healthcare_unit)
+
         medication.update!(medication_params)
         audit!("medication.updated", medication, medication: medication.slice(:name, :atc_code, :form, :strength, :inventory_balance))
         render json: MedicationSerializer.render(medication)
       end
 
       def destroy
-        return unless role_allowed?("admin")
-
         medication = Medication.find(params[:id])
+        return unless role_allowed?("admin", healthcare_unit: medication.healthcare_unit)
+
         medication.destroy!
         audit!("medication.deleted", medication, medication: medication.slice(:name, :atc_code))
         head :no_content

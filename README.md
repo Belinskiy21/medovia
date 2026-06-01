@@ -93,17 +93,17 @@ The frontend signs in through `POST /api/v1/session` and sends the returned toke
 Authorization: Bearer <token>
 ```
 
-Human user tokens are Rails-signed tokens with a 12 hour lifetime. Audit logs use the authenticated user email and role.
+Human user tokens are Rails-signed tokens with a 12 hour lifetime. Human roles are assigned through healthcare-unit memberships, so the same user can have different roles in different units. Audit logs use the authenticated user email and the role for the affected healthcare unit.
 
 Seeded demo credentials:
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Nurse | `nurse@medovia.test` | `NursePass123!` |
-| Pharmacist | `pharmacist@medovia.test` | `PharmacistPass123!` |
-| Admin | `admin@medovia.test` | `AdminPass123!` |
+| User | Email | Password | Seeded memberships |
+| --- | --- | --- | --- |
+| Nurse | `nurse@medovia.test` | `NursePass123!` | Nurse in both seeded units |
+| Pharmacist | `pharmacist@medovia.test` | `PharmacistPass123!` | Pharmacist in Karolinska Cardiology, nurse in Sahlgrenska Emergency |
+| Admin | `admin@medovia.test` | `AdminPass123!` | Admin in both seeded units |
 
-The demo users are persisted with secure password digests.
+The demo users are persisted with secure password digests. Their roles live in `memberships`, not directly on `users`.
 
 Service-to-service callers use the same bearer header with a service token. The seeded development service account is:
 

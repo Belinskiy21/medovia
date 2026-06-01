@@ -49,7 +49,8 @@ type MedicationResponse = { data: Medication[]; meta: MedicationMeta };
 type OrderMeta = { page: number; per_page: number; total_count: number; total_pages: number; open_count: number };
 type OrderResponse = { data: Order[]; meta: OrderMeta };
 type AuditLog = { id: number; actor: string; role: string; action: string; created_at: string; metadata: Record<string, unknown> };
-type SessionUser = { id: number; email: string; name: string; role: Role };
+type UserMembership = { healthcare_unit_id: number; healthcare_unit_name: string; role: Role };
+type SessionUser = { id: number; email: string; name: string; memberships: UserMembership[] };
 type Session = { token: string; user: SessionUser };
 type MedicationFormState = Omit<Medication, "id" | "healthcare_unit_id" | "category" | "low_inventory">;
 
@@ -109,12 +110,13 @@ function App() {
   const [error, setError] = useState("");
 
   const selectedUnit = units.find((unit) => unit.id === unitId);
+  const currentMembership = session?.user.memberships.find((membership) => membership.healthcare_unit_id === unitId) ?? session?.user.memberships[0];
   const orderMedicationOptions = medications.filter((medication) => {
     const matchesQuery = [medication.name, medication.atc_code, medication.form].some((value) => value.toLowerCase().includes(orderQuery.toLowerCase()));
     const matchesForm = !orderFormFilter || medication.form === orderFormFilter;
     return matchesQuery && matchesForm;
   });
-  const role = session?.user.role ?? "nurse";
+  const role = currentMembership?.role ?? "nurse";
 
   const headers = useMemo(
     () => ({
@@ -470,7 +472,7 @@ function App() {
               </option>
             ))}
           </select>
-          <span className="user-chip">{session.user.name} · {session.user.role}</span>
+          <span className="user-chip">{session.user.name} · {role}</span>
           <button className="icon-button" onClick={() => refresh()} aria-label="Refresh">
             <RefreshCw size={18} />
           </button>

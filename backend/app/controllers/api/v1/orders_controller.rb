@@ -3,9 +3,11 @@ require "csv"
 module Api
   module V1
     class OrdersController < BaseController
-      before_action :set_unit, only: [:index, :create, :export]
+      before_action :set_unit, only: [ :index, :create, :export ]
 
       def index
+        return unless unit_access_allowed?(@unit)
+
         orders = filtered_orders
         total_count = orders.count
         page = page_param
@@ -25,19 +27,24 @@ module Api
       end
 
       def show
-        render json: OrderSerializer.render(Order.includes(order_lines: :medication).find(params[:id]))
+        order = Order.includes(order_lines: :medication).find(params[:id])
+        return unless unit_access_allowed?(order.healthcare_unit)
+
+        render json: OrderSerializer.render(order)
       end
 
       def create
+        return unless role_allowed?("nurse", "pharmacist", "admin", healthcare_unit: @unit)
+
         order = @unit.orders.create!(order_params.merge(created_by: current_actor))
         audit!("order.created", order, line_count: order.order_lines.size)
         render json: OrderSerializer.render(order), status: :created
       end
 
       def advance
-        return unless role_allowed?("pharmacist", "admin")
-
         order = Order.find(params[:id])
+        return unless role_allowed?("pharmacist", "admin", healthcare_unit: order.healthcare_unit)
+
         previous_status = order.status
         order.advance!
         audit!("order.advanced", order, from: previous_status, to: order.status)
@@ -45,12 +52,14 @@ module Api
       end
 
       def export
+        return unless unit_access_allowed?(@unit)
+
         orders = filtered_orders.includes(order_lines: :medication)
         csv = CSV.generate(headers: true) do |out|
-          out << ["Order ID", "Status", "Created by", "Created at", "Medication", "ATC code", "Quantity"]
+          out << [ "Order ID", "Status", "Created by", "Created at", "Medication", "ATC code", "Quantity" ]
           orders.each do |order|
             order.order_lines.each do |line|
-              out << [order.id, order.status, order.created_by, order.created_at.iso8601, line.medication.name, line.medication.atc_code, line.quantity]
+              out << [ order.id, order.status, order.created_by, order.created_at.iso8601, line.medication.name, line.medication.atc_code, line.quantity ]
             end
           end
         end
@@ -65,7 +74,7 @@ module Api
       end
 
       def order_params
-        params.require(:order).permit(order_lines_attributes: [:medication_id, :quantity])
+        params.require(:order).permit(order_lines_attributes: [ :medication_id, :quantity ])
       end
 
       def filtered_orders
@@ -87,7 +96,7 @@ module Api
       end
 
       def page_param
-        [params.fetch(:page, 1).to_i, 1].max
+        [ params.fetch(:page, 1).to_i, 1 ].max
       end
 
       def per_page_param

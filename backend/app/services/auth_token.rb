@@ -3,12 +3,11 @@ class AuthToken
 
   def self.issue(user)
     verifier.generate(
-      {
-        "sub" => user.id,
-        "email" => user.email,
-        "role" => user.role,
-        "type" => "user"
-      },
+        {
+          "sub" => user.id,
+          "email" => user.email,
+          "type" => "user"
+        },
       expires_in: TOKEN_TTL
     )
   end
@@ -20,7 +19,7 @@ class AuthToken
     user = User.find_by(id: payload["sub"])
     return unless user
 
-    AuthenticatedPrincipal.new(actor: user.email, role: user.role, kind: "user", record: user)
+    AuthenticatedPrincipal.new(actor: user.email, role: nil, kind: "user", record: user)
   end
 
   def self.verifier

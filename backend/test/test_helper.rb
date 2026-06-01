@@ -14,10 +14,12 @@ module ActiveSupport
       user = User.create!(
         email: email || "#{role}-#{SecureRandom.hex(4)}@example.test",
         name: "#{role.capitalize} Test User",
-        role:,
         password: "Password123!",
         password_confirmation: "Password123!"
       )
+      HealthcareUnit.find_each do |unit|
+        user.memberships.create!(healthcare_unit: unit, role:)
+      end
 
       { "Authorization" => "Bearer #{AuthToken.issue(user)}" }
     end
