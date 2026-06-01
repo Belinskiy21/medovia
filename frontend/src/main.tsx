@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AlertTriangle, ClipboardList, Download, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Search, Send, Trash2 } from "lucide-react";
+import { AlertTriangle, ClipboardList, Clock3, Download, Eye, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Search, Send, Trash2 } from "lucide-react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import "./styles.css";
 
@@ -34,6 +34,9 @@ type Order = {
   status: "draft" | "sent" | "confirmed" | "delivered";
   created_by: string;
   created_at: string;
+  sent_at: string | null;
+  confirmed_at: string | null;
+  delivered_at: string | null;
   order_lines: OrderLine[];
 };
 type AuditLog = { id: number; actor: string; role: string; action: string; created_at: string; metadata: Record<string, unknown> };
@@ -76,6 +79,7 @@ function App() {
   const [medicationForm, setMedicationForm] = useState<MedicationFormState>(emptyMedication);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [orderLines, setOrderLines] = useState<Record<number, number>>({});
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -138,6 +142,7 @@ function App() {
     setMedications([]);
     setOrders([]);
     setAuditLogs([]);
+    setSelectedOrderId(null);
   }
 
   async function refresh(nextUnitId = unitId) {
@@ -249,6 +254,7 @@ function App() {
         body: JSON.stringify({ order: { order_lines_attributes: lines } })
       });
       setOrderLines({});
+      setSelectedOrderId(null);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create order");
@@ -484,15 +490,21 @@ function App() {
                 <ul>
                   {order.order_lines.map((line) => (
                     <li key={line.id}>
-                      {line.medication_name} · {line.quantity}
+                      {line.medication_name} · {line.atc_code} · {line.quantity}
                     </li>
                   ))}
                 </ul>
-                {order.status !== "delivered" && (
-                  <button className="secondary" onClick={() => advanceOrder(order.id)}>
-                    <Send size={16} /> Advance
+                <div className="order-actions">
+                  <button className="secondary" onClick={() => setSelectedOrderId(selectedOrderId === order.id ? null : order.id)}>
+                    <Eye size={16} /> {selectedOrderId === order.id ? "Hide details" : "Details"}
                   </button>
-                )}
+                  {order.status !== "delivered" && (
+                    <button className="secondary" onClick={() => advanceOrder(order.id)}>
+                      <Send size={16} /> Advance
+                    </button>
+                  )}
+                </div>
+                {selectedOrderId === order.id && <OrderDetails order={order} />}
               </article>
             ))}
           </div>
@@ -528,6 +540,29 @@ function Summary({ label, value, urgent = false }: { label: string; value: numbe
 
 function Status({ status }: { status: Order["status"] }) {
   return <span className={`status ${status}`}>{status}</span>;
+}
+
+function OrderDetails({ order }: { order: Order }) {
+  const events = [
+    { label: "Created", value: order.created_at, actor: order.created_by },
+    { label: "Sent", value: order.sent_at },
+    { label: "Confirmed", value: order.confirmed_at },
+    { label: "Delivered", value: order.delivered_at }
+  ];
+
+  return (
+    <div className="order-details">
+      <div className="status-timeline">
+        {events.map((event) => (
+          <div key={event.label} className={event.value ? "timeline-event complete" : "timeline-event"}>
+            <Clock3 size={16} />
+            <span>{event.label}</span>
+            <small>{event.value ? `${new Date(event.value).toLocaleString()}${event.actor ? ` by ${event.actor}` : ""}` : "Not yet"}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 createRoot(document.getElementById("root")!).render(
