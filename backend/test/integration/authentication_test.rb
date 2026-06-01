@@ -61,4 +61,40 @@ class AuthenticationTest < ActionDispatch::IntegrationTest
     get api_v1_healthcare_unit_medications_path(blocked_unit), headers: headers
     assert_response :forbidden
   end
+
+  test "admin can list and filter audit logs by event" do
+    unit = HealthcareUnit.create!(name: "Audit Ward", location: "Stockholm")
+    user = User.create!(
+      email: "audit-admin@example.test",
+      name: "Audit Admin",
+      password: "Password123!",
+      password_confirmation: "Password123!"
+    )
+    user.memberships.create!(healthcare_unit: unit, role: "admin")
+    AuditLog.create!(
+      actor: user.email,
+      role: "admin",
+      action: "order.advanced",
+      auditable_type: "Order",
+      auditable_id: 42,
+      metadata: { from: "sent", to: "confirmed", healthcare_unit_id: unit.id, healthcare_unit_name: unit.name }
+    )
+    AuditLog.create!(
+      actor: user.email,
+      role: "admin",
+      action: "medication.updated",
+      auditable_type: "Medication",
+      auditable_id: 7,
+      metadata: { healthcare_unit_id: unit.id, healthcare_unit_name: unit.name }
+    )
+
+    get api_v1_audit_logs_path,
+      params: { event: "order.advanced" },
+      headers: { "Authorization" => "Bearer #{AuthToken.issue(user)}" }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal 1, body.length
+    assert_equal "order.advanced", body.first["action"]
+  end
 end

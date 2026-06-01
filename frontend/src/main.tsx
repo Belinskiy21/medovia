@@ -249,7 +249,7 @@ function App() {
 
   function auditQueryString() {
     const params = new URLSearchParams();
-    if (auditActionFilter) params.set("action", auditActionFilter);
+    if (auditActionFilter) params.set("event", auditActionFilter);
     if (auditActorFilter) params.set("actor", auditActorFilter);
     if (auditRecordTypeFilter) params.set("record_type", auditRecordTypeFilter);
     if (auditUnitFilter) params.set("healthcare_unit_id", auditUnitFilter);

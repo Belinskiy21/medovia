@@ -12,7 +12,7 @@ module Api
 
       def filtered_logs
         logs = AuditLog.all
-        logs = logs.where(action: params[:action]) if params[:action].present?
+        logs = logs.where(action: params[:event]) if params[:event].present?
         logs = logs.where(auditable_type: params[:record_type]) if params[:record_type].present?
         logs = logs.where("actor ILIKE ?", "%#{AuditLog.sanitize_sql_like(params[:actor])}%") if params[:actor].present?
         logs = logs.where("metadata ->> 'healthcare_unit_id' = ?", params[:healthcare_unit_id].to_s) if params[:healthcare_unit_id].present?
