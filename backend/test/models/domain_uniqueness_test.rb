@@ -46,7 +46,7 @@ class DomainUniquenessTest < ActiveSupport::TestCase
     )
     order = unit.orders.create!(
       created_by: "nurse@example.test",
-      order_lines_attributes: [{ medication:, quantity: 4 }]
+      order_lines_attributes: [ { medication:, quantity: 4 } ]
     )
 
     duplicate = order.order_lines.new(medication:, quantity: 2)

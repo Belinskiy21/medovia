@@ -1,5 +1,5 @@
 class Order < ApplicationRecord
-  STATUSES = ["draft", "sent", "confirmed", "delivered"].freeze
+  STATUSES = [ "draft", "sent", "confirmed", "delivered" ].freeze
 
   belongs_to :healthcare_unit
   has_many :order_lines, dependent: :destroy

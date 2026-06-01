@@ -20,7 +20,7 @@ class CreateMeditrackCore < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :medications, [:healthcare_unit_id, :atc_code, :name], name: "index_medications_on_unit_atc_name"
+    add_index :medications, [ :healthcare_unit_id, :atc_code, :name ], name: "index_medications_on_unit_atc_name"
 
     create_table :orders do |t|
       t.references :healthcare_unit, null: false, foreign_key: true
@@ -52,7 +52,7 @@ class CreateMeditrackCore < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :audit_logs, [:auditable_type, :auditable_id]
+    add_index :audit_logs, [ :auditable_type, :auditable_id ]
     add_index :audit_logs, :created_at
   end
 end

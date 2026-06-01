@@ -1,5 +1,5 @@
 class Medication < ApplicationRecord
-  FORMS = ["tablet", "capsule", "injection solution", "oral solution", "inhalation", "cream"].freeze
+  FORMS = [ "tablet", "capsule", "injection solution", "oral solution", "inhalation", "cream" ].freeze
 
   belongs_to :healthcare_unit
   has_many :order_lines, dependent: :restrict_with_error

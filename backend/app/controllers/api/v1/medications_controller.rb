@@ -68,7 +68,7 @@ module Api
       end
 
       def page_param
-        [params.fetch(:page, 1).to_i, 1].max
+        [ params.fetch(:page, 1).to_i, 1 ].max
       end
 
       def per_page_param
