@@ -120,6 +120,30 @@ curl -H "Authorization: Bearer svc_meditrack_inventory_demo_token" \
   http://localhost:3001/api/v1/healthcare_units/1/medications
 ```
 
+## Testing API Calls With Curl
+
+For quick local API checks, use the seeded service account token:
+
+```bash
+curl -H "Authorization: Bearer svc_meditrack_inventory_demo_token" \
+  http://localhost:3001/api/v1/healthcare_units/1/medications
+```
+
+To test as a human user, first request a session token:
+
+```bash
+curl -X POST http://localhost:3001/api/v1/session \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@medovia.test","password":"AdminPass123!"}'
+```
+
+Then pass the returned `token` value on later requests:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:3001/api/v1/healthcare_units
+```
+
 ## Tests
 
 Run backend tests:
