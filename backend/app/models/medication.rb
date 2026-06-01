@@ -7,6 +7,7 @@ class Medication < ApplicationRecord
   validates :name, :atc_code, :form, :strength, presence: true
   validates :inventory_balance, :minimum_threshold, numericality: { greater_than_or_equal_to: 0, only_integer: true }
   validates :form, inclusion: { in: FORMS }
+  validate :unique_identity_in_healthcare_unit
 
   before_validation :assign_category
 
@@ -30,5 +31,17 @@ class Medication < ApplicationRecord
 
   def assign_category
     self.category = MedicationCategorizer.call(name:, atc_code:)
+  end
+
+  def unique_identity_in_healthcare_unit
+    return if healthcare_unit_id.blank? || atc_code.blank? || form.blank? || strength.blank?
+
+    duplicate = Medication
+      .where(healthcare_unit_id:)
+      .where("lower(atc_code) = ? AND lower(form) = ? AND lower(strength) = ?", atc_code.downcase, form.downcase, strength.downcase)
+      .where.not(id:)
+      .exists?
+
+    errors.add(:atc_code, "has already been taken") if duplicate
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_01_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_01_151000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,6 +32,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_150000) do
     t.string "location", null: false
     t.string "name", null: false
     t.datetime "updated_at", null: false
+    t.index "lower((name)::text), lower((location)::text)", name: "index_healthcare_units_on_lower_name_location", unique: true
   end
 
   create_table "medications", force: :cascade do |t|
@@ -45,6 +46,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_150000) do
     t.string "name", null: false
     t.string "strength", null: false
     t.datetime "updated_at", null: false
+    t.index "healthcare_unit_id, lower((atc_code)::text), lower((form)::text), lower((strength)::text)", name: "index_medications_on_unit_atc_form_strength", unique: true
     t.index ["healthcare_unit_id", "atc_code", "name"], name: "index_medications_on_unit_atc_name"
     t.index ["healthcare_unit_id"], name: "index_medications_on_healthcare_unit_id"
   end
@@ -56,6 +58,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_150000) do
     t.integer "quantity", null: false
     t.datetime "updated_at", null: false
     t.index ["medication_id"], name: "index_order_lines_on_medication_id"
+    t.index ["order_id", "medication_id"], name: "index_order_lines_on_order_medication", unique: true
     t.index ["order_id"], name: "index_order_lines_on_order_id"
   end
 

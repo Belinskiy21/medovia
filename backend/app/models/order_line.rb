@@ -3,6 +3,7 @@ class OrderLine < ApplicationRecord
   belongs_to :medication
 
   validates :quantity, numericality: { greater_than: 0, only_integer: true }
+  validates :medication_id, uniqueness: { scope: :order_id }
   validate :medication_matches_order_unit
   validate :immutable_after_order_is_sent, on: :update
 
