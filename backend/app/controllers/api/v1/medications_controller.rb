@@ -1,11 +1,24 @@
 module Api
   module V1
     class MedicationsController < BaseController
-      before_action :set_unit, only: [:index, :create]
+      before_action :set_unit, only: [ :index, :create ]
 
       def index
         medications = @unit.medications.search(params[:q]).by_form(params[:form]).order(:name)
-        render json: medications.map { |medication| MedicationSerializer.render(medication) }
+        total_count = medications.count
+        page = page_param
+        per_page = per_page_param
+        paginated_medications = medications.offset((page - 1) * per_page).limit(per_page)
+
+        render json: {
+          data: paginated_medications.map { |medication| MedicationSerializer.render(medication) },
+          meta: {
+            page:,
+            per_page:,
+            total_count:,
+            total_pages: (total_count.to_f / per_page).ceil
+          }
+        }
       end
 
       def show
@@ -46,6 +59,14 @@ module Api
 
       def medication_params
         params.require(:medication).permit(:name, :atc_code, :form, :strength, :inventory_balance, :minimum_threshold)
+      end
+
+      def page_param
+        [params.fetch(:page, 1).to_i, 1].max
+      end
+
+      def per_page_param
+        params.fetch(:per_page, 10).to_i.clamp(1, 1000)
       end
     end
   end

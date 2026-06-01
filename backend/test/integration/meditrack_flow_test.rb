@@ -43,8 +43,31 @@ class MeditrackFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     body = JSON.parse(response.body)
-    assert_equal 1, body.length
-    assert_equal true, body.first["low_inventory"]
+    assert_equal 1, body["data"].length
+    assert_equal 1, body["meta"]["total_count"]
+    assert_equal true, body["data"].first["low_inventory"]
+  end
+
+  test "paginates medications" do
+    12.times do |index|
+      @unit.medications.create!(
+        name: "Medication #{index}",
+        atc_code: "A#{index.to_s.rjust(6, "0")}",
+        form: "tablet",
+        strength: "#{index + 1} mg",
+        inventory_balance: 10,
+        minimum_threshold: 5
+      )
+    end
+
+    get api_v1_healthcare_unit_medications_path(@unit), params: { page: 2, per_page: 10 }, headers: auth_headers(role: "nurse")
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal 3, body["data"].length
+    assert_equal 13, body["meta"]["total_count"]
+    assert_equal 2, body["meta"]["page"]
+    assert_equal 2, body["meta"]["total_pages"]
   end
 
   test "filters and paginates order history" do

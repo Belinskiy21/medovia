@@ -8,6 +8,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api
 const roleOptions = ["nurse", "pharmacist", "admin"] as const;
 const orderStatuses = ["draft", "sent", "confirmed", "delivered"] as const;
 const ordersPerPage = 10;
+const medicationsPerPage = 10;
 const medicationForms = ["tablet", "capsule", "injection solution", "oral solution", "inhalation", "cream"];
 const sessionStorageKey = "meditrack.session";
 const demoAccounts = [
@@ -42,6 +43,8 @@ type Order = {
   order_lines: OrderLine[];
 };
 type OrderStatus = (typeof orderStatuses)[number];
+type MedicationMeta = { page: number; per_page: number; total_count: number; total_pages: number };
+type MedicationResponse = { data: Medication[]; meta: MedicationMeta };
 type OrderMeta = { page: number; per_page: number; total_count: number; total_pages: number; open_count: number };
 type OrderResponse = { data: Order[]; meta: OrderMeta };
 type AuditLog = { id: number; actor: string; role: string; action: string; created_at: string; metadata: Record<string, unknown> };
@@ -77,6 +80,9 @@ function App() {
   const [units, setUnits] = useState<HealthcareUnit[]>([]);
   const [unitId, setUnitId] = useState<number | null>(null);
   const [medications, setMedications] = useState<Medication[]>([]);
+  const [registryMedications, setRegistryMedications] = useState<Medication[]>([]);
+  const [medicationPage, setMedicationPage] = useState(1);
+  const [medicationMeta, setMedicationMeta] = useState<MedicationMeta>({ page: 1, per_page: medicationsPerPage, total_count: 0, total_pages: 0 });
   const [orders, setOrders] = useState<Order[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [query, setQuery] = useState("");
@@ -160,6 +166,9 @@ function App() {
     setUnits([]);
     setUnitId(null);
     setMedications([]);
+    setRegistryMedications([]);
+    setMedicationPage(1);
+    setMedicationMeta({ page: 1, per_page: medicationsPerPage, total_count: 0, total_pages: 0 });
     setOrders([]);
     setAuditLogs([]);
     setSelectedOrderId(null);
@@ -188,18 +197,35 @@ function App() {
     setSelectedOrderId(null);
   }
 
+  function registryMedicationQueryString() {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (formFilter) params.set("form", formFilter);
+    params.set("page", String(medicationPage));
+    params.set("per_page", String(medicationsPerPage));
+
+    return params.toString();
+  }
+
+  function resetMedicationPage() {
+    setMedicationPage(1);
+  }
+
   async function refresh(nextUnitId = unitId) {
     if (!nextUnitId) return;
     setLoading(true);
     setError("");
     try {
       const [nextMedications, nextOrders] = await Promise.all([
-        request<Medication[]>(`/healthcare_units/${nextUnitId}/medications?q=${encodeURIComponent(query)}&form=${encodeURIComponent(formFilter)}`),
+        request<MedicationResponse>(`/healthcare_units/${nextUnitId}/medications?${registryMedicationQueryString()}`),
         request<OrderResponse>(`/healthcare_units/${nextUnitId}/orders?${orderQueryString()}`)
       ]);
-      setMedications(nextMedications);
+      setRegistryMedications(nextMedications.data);
+      setMedicationMeta(nextMedications.meta);
       setOrders(nextOrders.data);
       setOrderMeta(nextOrders.meta);
+      const inventory = await request<MedicationResponse>(`/healthcare_units/${nextUnitId}/medications?per_page=1000`);
+      setMedications(inventory.data);
       if (role === "admin") {
         setAuditLogs(await request<AuditLog[]>("/audit_logs"));
       } else {
@@ -234,7 +260,7 @@ function App() {
     if (!session) return;
 
     refresh();
-  }, [unitId, query, formFilter, orderHistoryQuery, orderStatusFilter, orderCreatedByFilter, orderFromDate, orderToDate, orderPage, session]);
+  }, [unitId, query, formFilter, medicationPage, orderHistoryQuery, orderStatusFilter, orderCreatedByFilter, orderFromDate, orderToDate, orderPage, session]);
 
   function editMedication(medication: Medication) {
     setEditingId(medication.id);
@@ -266,6 +292,7 @@ function App() {
       }
       setMedicationForm(emptyMedication);
       setEditingId(null);
+      setMedicationPage(1);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save medication");
@@ -426,7 +453,7 @@ function App() {
       {loading && <div className="notice">Loading current inventory and orders...</div>}
 
       <section className="summary-grid">
-        <Summary label="Medications" value={medications.length} />
+        <Summary label="Medications" value={medicationMeta.total_count} />
         <Summary label="Open orders" value={orderMeta.open_count} />
         <Summary label="Low stock" value={lowStock.length} urgent={lowStock.length > 0} />
       </section>
@@ -500,9 +527,23 @@ function App() {
             <div className="filters">
               <label>
                 <Search size={16} />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, ATC, form" />
+                <input
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    resetMedicationPage();
+                  }}
+                  placeholder="Name, ATC, form"
+                />
               </label>
-              <select value={formFilter} onChange={(event) => setFormFilter(event.target.value)} aria-label="Filter by form">
+              <select
+                value={formFilter}
+                onChange={(event) => {
+                  setFormFilter(event.target.value);
+                  resetMedicationPage();
+                }}
+                aria-label="Filter by form"
+              >
                 <option value="">All forms</option>
                 {medicationForms.map((form) => (
                   <option key={form} value={form}>
@@ -527,7 +568,7 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {medications.map((medication) => (
+                {registryMedications.map((medication) => (
                   <tr key={medication.id} className={medication.low_inventory ? "low" : ""}>
                     <td>{medication.name}</td>
                     <td>{medication.atc_code}</td>
@@ -549,6 +590,20 @@ function App() {
                 ))}
               </tbody>
             </table>
+            {registryMedications.length === 0 && <p className="empty-state">No medications match these filters.</p>}
+          </div>
+          <div className="pagination">
+            <span>
+              Page {medicationMeta.total_pages === 0 ? 0 : medicationMeta.page} of {medicationMeta.total_pages} · {medicationMeta.total_count} medications
+            </span>
+            <div className="pagination-actions">
+              <button className="secondary" onClick={() => setMedicationPage((page) => Math.max(1, page - 1))} disabled={medicationPage <= 1}>
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <button className="secondary" onClick={() => setMedicationPage((page) => page + 1)} disabled={medicationPage >= medicationMeta.total_pages}>
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </section>
 
