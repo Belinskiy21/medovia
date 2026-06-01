@@ -5,7 +5,7 @@ module Api
         units = if current_principal.kind == "service"
           HealthcareUnit.order(:name)
         else
-          current_principal.record.healthcare_units.order(:name)
+          current_principal.record.healthcare_units.distinct.order(:name)
         end
 
         render json: units.map { |unit| HealthcareUnitSerializer.render(unit) }

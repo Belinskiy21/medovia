@@ -9,7 +9,8 @@ emergency = HealthcareUnit.find_or_create_by!(name: "Sahlgrenska Emergency", loc
   user = User.find_or_initialize_by(email:)
   user.update!(name:, password:, password_confirmation: password)
   memberships.each do |unit, role|
-    user.memberships.find_or_create_by!(healthcare_unit: unit, role:)
+    membership = user.memberships.find_or_initialize_by(healthcare_unit: unit)
+    membership.update!(role:)
   end
 end
 

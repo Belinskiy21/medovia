@@ -24,4 +24,15 @@ class UserTest < ActiveSupport::TestCase
     assert_not membership.valid?
     assert_includes membership.errors[:role], "is not included in the list"
   end
+
+  test "allows one membership per user and healthcare unit" do
+    user = User.create!(email: "single-membership@example.test", name: "Single Membership", password: "Password123!", password_confirmation: "Password123!")
+    unit = HealthcareUnit.create!(name: "Single Membership Ward", location: "Stockholm")
+    user.memberships.create!(healthcare_unit: unit, role: "nurse")
+
+    duplicate = user.memberships.new(healthcare_unit: unit, role: "pharmacist")
+
+    assert_not duplicate.valid?
+    assert_includes duplicate.errors[:healthcare_unit_id], "has already been taken"
+  end
 end

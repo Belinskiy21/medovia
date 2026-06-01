@@ -5,5 +5,5 @@ class Membership < ApplicationRecord
   belongs_to :healthcare_unit
 
   validates :role, presence: true, inclusion: { in: ROLES }
-  validates :role, uniqueness: { scope: [ :user_id, :healthcare_unit_id ] }
+  validates :healthcare_unit_id, uniqueness: { scope: :user_id }
 end
