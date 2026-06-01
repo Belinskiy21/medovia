@@ -286,6 +286,11 @@ tr.low td:first-child {
   font-weight: 700;
 }
 
+.order-line.low span > :first-child {
+  color: #b44900;
+  font-weight: 700;
+}
+
 .stack,
 .order-lines,
 .order-history,

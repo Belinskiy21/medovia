@@ -735,7 +735,7 @@ function App() {
           </div>
           <div className="order-lines">
             {orderMedicationOptions.map((medication) => (
-              <label key={medication.id} className="order-line">
+              <label key={medication.id} className={medication.low_inventory ? "order-line low" : "order-line"}>
                 <span>
                   {medication.name}
                   <small>{medication.atc_code} · current {medication.inventory_balance}</small>
