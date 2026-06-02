@@ -1,6 +1,8 @@
 module Api
   module V1
     class BaseController < ApplicationController
+      include Api::V1::Paginatable
+
       before_action :authenticate_request!
 
       rescue_from ActiveRecord::RecordInvalid, with: :render_unprocessable_entity

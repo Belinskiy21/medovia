@@ -16,8 +16,7 @@ module Api
         logs = logs.where(auditable_type: params[:record_type]) if params[:record_type].present?
         logs = logs.where("actor ILIKE ?", "%#{AuditLog.sanitize_sql_like(params[:actor])}%") if params[:actor].present?
         logs = logs.where("metadata ->> 'healthcare_unit_id' = ?", params[:healthcare_unit_id].to_s) if params[:healthcare_unit_id].present?
-        logs = logs.where(created_at: Time.zone.parse(params[:from])..) if params[:from].present?
-        logs = logs.where(created_at: ..Time.zone.parse(params[:to]).end_of_day) if params[:to].present?
+        logs = filter_created_at_range(logs)
 
         logs
       end

@@ -1,5 +1,3 @@
-require "csv"
-
 module Api
   module V1
     class OrdersController < BaseController
@@ -9,20 +7,13 @@ module Api
         return unless unit_access_allowed?(@unit)
 
         orders = filtered_orders
-        total_count = orders.count
-        page = page_param
-        per_page = per_page_param
-        paginated_orders = orders.includes(order_lines: :medication).offset((page - 1) * per_page).limit(per_page)
+        paginated_orders, meta = paginate(orders.includes(order_lines: :medication), max_per_page: 100)
 
         render json: {
           data: paginated_orders.map { |order| OrderSerializer.render(order) },
-          meta: {
-            page:,
-            per_page:,
-            total_count:,
-            total_pages: (total_count.to_f / per_page).ceil,
+          meta: meta.merge(
             open_count: orders.where.not(status: "delivered").count
-          }
+          )
         }
       end
 
@@ -55,16 +46,8 @@ module Api
         return unless unit_access_allowed?(@unit)
 
         orders = filtered_orders.includes(order_lines: :medication)
-        csv = CSV.generate(headers: true) do |out|
-          out << [ "Order ID", "Status", "Created by", "Created at", "Medication", "ATC code", "Quantity" ]
-          orders.each do |order|
-            order.order_lines.each do |line|
-              out << [ order.id, order.status, order.created_by, order.created_at.iso8601, line.medication.name, line.medication.atc_code, line.quantity ]
-            end
-          end
-        end
 
-        send_data csv, filename: "meditrack-orders-unit-#{@unit.id}.csv", type: "text/csv"
+        send_data Orders::CsvExport.call(orders), filename: "meditrack-orders-unit-#{@unit.id}.csv", type: "text/csv"
       end
 
       private
@@ -81,8 +64,7 @@ module Api
         orders = @unit.orders.order(created_at: :desc)
         orders = orders.where(status: params[:status]) if params[:status].present? && Order::STATUSES.include?(params[:status])
         orders = orders.where("created_by ILIKE ?", "%#{Order.sanitize_sql_like(params[:created_by])}%") if params[:created_by].present?
-        orders = orders.where(created_at: Time.zone.parse(params[:from])..) if params[:from].present?
-        orders = orders.where(created_at: ..Time.zone.parse(params[:to]).end_of_day) if params[:to].present?
+        orders = filter_created_at_range(orders)
 
         if params[:q].present?
           query = "%#{Order.sanitize_sql_like(params[:q])}%"
@@ -93,14 +75,6 @@ module Api
         end
 
         orders
-      end
-
-      def page_param
-        [ params.fetch(:page, 1).to_i, 1 ].max
-      end
-
-      def per_page_param
-        params.fetch(:per_page, 10).to_i.clamp(1, 100)
       end
     end
   end
